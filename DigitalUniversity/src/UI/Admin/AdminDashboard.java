@@ -21,6 +21,8 @@ public class AdminDashboard extends javax.swing.JPanel {
     private ReportService reportService;
     private UniversityDirectory directory;
     private AuthenticationService authService;
+    private DefaultTableModel userTableModel;
+    private JTable userTable;
     
     /**
      * Creates new form AdminDashboard
@@ -49,78 +51,83 @@ public class AdminDashboard extends javax.swing.JPanel {
     // 1️⃣ USER ACCOUNT MANAGEMENT PANEL
     // ============================================================
     private JPanel createUserAccountPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        JLabel title = new JLabel("Manage User Accounts", SwingConstants.CENTER);
+    JPanel panel = new JPanel(new BorderLayout());
+    JLabel title = new JLabel("Manage User Accounts", SwingConstants.CENTER);
 
-        String[] columns = {"Username", "Role", "University ID"};
-        DefaultTableModel model = new DefaultTableModel(columns, 0);
-        JTable table = new JTable(model);
+    // ✅ 使用 class-level model
+    String[] columns = {"Username", "Role", "University ID"};
+    userTableModel = new DefaultTableModel(columns, 0);
+    userTable = new JTable(userTableModel);
 
-        // 預設帳號
-        model.addRow(new Object[]{"admin", "ADMIN", "U0001"});
-        model.addRow(new Object[]{"faculty01", "FACULTY", "U0002"});
-        model.addRow(new Object[]{"student01", "STUDENT", "U0003"});
-        model.addRow(new Object[]{"registrar01", "REGISTRAR", "U0004"});
+    // 預設帳號
+    userTableModel.addRow(new Object[]{"admin", "ADMIN", "U0001"});
+    userTableModel.addRow(new Object[]{"faculty01", "FACULTY", "U0002"});
+    userTableModel.addRow(new Object[]{"student01", "STUDENT", "U0003"});
+    userTableModel.addRow(new Object[]{"registrar01", "REGISTRAR", "U0004"});
 
-        JButton btnAdd = new JButton("Add Account");
-        JButton btnEdit = new JButton("Edit Account");
-        JButton btnDelete = new JButton("Delete Account");
+    JButton btnAdd = new JButton("Add Account");
+    JButton btnEdit = new JButton("Edit Account");
+    JButton btnDelete = new JButton("Delete Account");
 
-        btnAdd.addActionListener(e -> {
-            String username = JOptionPane.showInputDialog(this, "Enter username:");
-            if (username == null || username.trim().isEmpty()) return;
-            String password = JOptionPane.showInputDialog(this, "Enter password:");
-            if (password == null || password.trim().isEmpty()) return;
+    btnAdd.addActionListener(e -> {
+        String username = JOptionPane.showInputDialog(this, "Enter username:");
+        if (username == null || username.trim().isEmpty()) return;
 
-            String[] roles = {"Admin", "Faculty", "Student", "Registrar"};
-            String role = (String) JOptionPane.showInputDialog(
-                    this, "Select Role:", "Choose Role",
-                    JOptionPane.PLAIN_MESSAGE, null, roles, roles[0]);
-            if (role == null) return;
+        String password = JOptionPane.showInputDialog(this, "Enter password:");
+        if (password == null || password.trim().isEmpty()) return;
 
-            String uniId = generateUniversityId();
-            adminService.createUserAccount(username, password, role.toUpperCase(), null);
-            model.addRow(new Object[]{username, role.toUpperCase(), uniId});
-            JOptionPane.showMessageDialog(this, "✅ Account created successfully!");
-        });
+        String[] roles = {"Admin", "Faculty", "Student", "Registrar"};
+        String role = (String) JOptionPane.showInputDialog(
+                this, "Select Role:", "Choose Role",
+                JOptionPane.PLAIN_MESSAGE, null, roles, roles[0]);
+        if (role == null) return;
 
-        btnEdit.addActionListener(e -> {
-            int row = table.getSelectedRow();
-            if (row < 0) {
-                JOptionPane.showMessageDialog(this, "Select a user to edit!");
-                return;
-            }
-            String newUsername = JOptionPane.showInputDialog(this, "Enter new username:");
-            if (newUsername != null && !newUsername.trim().isEmpty()) {
-                model.setValueAt(newUsername, row, 0);
-                JOptionPane.showMessageDialog(this, "Username updated!");
-            }
-        });
+        String uniId = generateUniversityId();
+        adminService.createUserAccount(username, password, role.toUpperCase(), null);
 
-        btnDelete.addActionListener(e -> {
-            int row = table.getSelectedRow();
-            if (row < 0) {
-                JOptionPane.showMessageDialog(this, "Select a user to delete!");
-                return;
-            }
-            model.removeRow(row);
-            JOptionPane.showMessageDialog(this, "User deleted!");
-        });
+        // ✅ 使用 class-level model
+        userTableModel.addRow(new Object[]{username, role.toUpperCase(), uniId});
+        userTableModel.fireTableDataChanged();
+        JOptionPane.showMessageDialog(this, "✅ Account created successfully!");
+    });
 
-        JPanel buttons = new JPanel();
-        buttons.add(btnAdd);
-        buttons.add(btnEdit);
-        buttons.add(btnDelete);
+    btnEdit.addActionListener(e -> {
+        int row = userTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select a user to edit!");
+            return;
+        }
+        String newUsername = JOptionPane.showInputDialog(this, "Enter new username:");
+        if (newUsername != null && !newUsername.trim().isEmpty()) {
+            userTableModel.setValueAt(newUsername, row, 0);
+            JOptionPane.showMessageDialog(this, "Username updated!");
+        }
+    });
 
-        panel.add(title, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
-        panel.add(buttons, BorderLayout.SOUTH);
-        return panel;
-    }
+    btnDelete.addActionListener(e -> {
+        int row = userTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select a user to delete!");
+            return;
+        }
+        userTableModel.removeRow(row);
+        JOptionPane.showMessageDialog(this, "User deleted!");
+    });
 
-    private String generateUniversityId() {
-        return "U" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-    }
+    JPanel buttons = new JPanel();
+    buttons.add(btnAdd);
+    buttons.add(btnEdit);
+    buttons.add(btnDelete);
+
+    panel.add(title, BorderLayout.NORTH);
+    panel.add(new JScrollPane(userTable), BorderLayout.CENTER);
+    panel.add(buttons, BorderLayout.SOUTH);
+    return panel;
+}
+
+private String generateUniversityId() {
+    return "U" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+}
 
     // ============================================================
     // 2️⃣ REGISTRAR RECORDS MANAGEMENT PANEL
@@ -132,6 +139,7 @@ public class AdminDashboard extends javax.swing.JPanel {
         String[] columns = {"University ID", "Name", "Email", "Phone"};
         DefaultTableModel model = new DefaultTableModel(columns, 0);
         JTable table = new JTable(model);
+        
 
         JButton btnView = new JButton("View All");
         JButton btnEdit = new JButton("Edit Registrar Info");
@@ -180,6 +188,12 @@ public class AdminDashboard extends javax.swing.JPanel {
         String[] columns = {"Type", "University ID", "Name", "Department", "Email", "Phone"};
         DefaultTableModel model = new DefaultTableModel(columns, 0);
         JTable table = new JTable(model);
+        
+        model.addRow(new Object[]{"Student", "U2001", "Amy Student", "Information Systems", "amy.student@northeastern.edu", "123-456-7890"});
+        model.addRow(new Object[]{"Student", "U2002", "Ben Learner", "Computer Science", "ben.learner@northeastern.edu", "987-654-3210"});
+        model.addRow(new Object[]{"Faculty", "U3001", "Dr. Emily Chen", "Data Science", "emily.chen@northeastern.edu", "555-111-2222"});
+        model.addRow(new Object[]{"Faculty", "U3002", "Prof. Daniel Kim", "Software Engineering", "daniel.kim@northeastern.edu", "444-555-6666"});
+
 
         JButton btnView = new JButton("View All");
         JButton btnEdit = new JButton("Edit Info");
@@ -187,13 +201,21 @@ public class AdminDashboard extends javax.swing.JPanel {
         JButton btnSearch = new JButton("Search");
 
         btnView.addActionListener(e -> {
-            model.setRowCount(0);
-            for (Student s : directory.getStudents()) {
-                model.addRow(new Object[]{"Student", s.getUniversityId(), s.getFullName(), s.getProgram(), s.getEmail()});
-            }
-            for (Faculty f : directory.getFaculties()) {
-                model.addRow(new Object[]{"Faculty", f.getUniversityId(), f.getFullName(), f.getDepartment().getName(), f.getEmail()});
-            }
+        int row = table.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Please select a record to view details!");
+            return;
+        }
+
+        StringBuilder details = new StringBuilder();
+        details.append("Type: ").append(model.getValueAt(row, 0)).append("\n");
+        details.append("University ID: ").append(model.getValueAt(row, 1)).append("\n");
+        details.append("Name: ").append(model.getValueAt(row, 2)).append("\n");
+        details.append("Department: ").append(model.getValueAt(row, 3)).append("\n");
+        details.append("Email: ").append(model.getValueAt(row, 4)).append("\n");
+        details.append("Phone: ").append(model.getValueAt(row, 5)).append("\n");
+
+        JOptionPane.showMessageDialog(this, details.toString(), "Record Details", JOptionPane.INFORMATION_MESSAGE);
         });
 
         btnEdit.addActionListener(e -> {
