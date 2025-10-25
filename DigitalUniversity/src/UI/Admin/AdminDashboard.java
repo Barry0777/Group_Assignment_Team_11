@@ -277,56 +277,89 @@ public class AdminDashboard extends javax.swing.JPanel {
 
 
     /** 4️⃣ FACULTY RECORDS **/
-    private JPanel createFacultyPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        JLabel label = new JLabel("Manage Faculty Records", SwingConstants.CENTER);
-        JTable table = new JTable();
-        JButton btnAssign = new JButton("Assign Faculty to Course");
+    /** 4️⃣ FACULTY RECORDS **/
+private JPanel createFacultyPanel() {
+    JPanel panel = new JPanel(new BorderLayout());
+    JLabel label = new JLabel("Manage Faculty Records", SwingConstants.CENTER);
+    JTable table = new JTable();
+    JButton btnAssign = new JButton("Assign Faculty to Course");
 
-        btnAssign.addActionListener(e -> {
-            try {
-                String facultyId = JOptionPane.showInputDialog("Enter Faculty ID:");
-                String courseId = JOptionPane.showInputDialog("Enter Course ID:");
-                adminService.assignFacultyToCourse(facultyId, courseId);
-                JOptionPane.showMessageDialog(this, "Faculty assigned to course successfully!");
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage());
+    btnAssign.addActionListener(e -> {
+        try {
+            String facultyId = JOptionPane.showInputDialog(this, "Enter Faculty ID:");
+            String courseId  = JOptionPane.showInputDialog(this, "Enter Course ID:");
+            if (facultyId == null || courseId == null || facultyId.trim().isEmpty() || courseId.trim().isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Both Faculty ID and Course ID are required.");
+                return;
             }
-        });
 
-        panel.add(label, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
-        panel.add(btnAssign, BorderLayout.SOUTH);
-        return panel;
-    }
+            // 依 ID 找出實體
+            Faculty faculty = findFacultyByIdOrEmail(facultyId.trim());
+            if (faculty == null) {
+                // 若用 ID 找不到，試著把輸入當 email
+                faculty = findFacultyByIdOrEmail(facultyId.trim());
+            }
+
+            CourseOffering offering = findCourseOfferingByCourseId(courseId.trim());
+
+            if (faculty == null) {
+                JOptionPane.showMessageDialog(this, "Faculty not found: " + facultyId);
+                return;
+            }
+            if (offering == null) {
+                JOptionPane.showMessageDialog(this, "Course offering not found for courseId: " + courseId);
+                return;
+            }
+
+            adminService.assignFacultyToCourse(faculty, offering);
+            JOptionPane.showMessageDialog(this, "Faculty assigned to course successfully!");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    });
+
+    panel.add(label, BorderLayout.NORTH);
+    panel.add(new JScrollPane(table), BorderLayout.CENTER);
+    panel.add(btnAssign, BorderLayout.SOUTH);
+    return panel;
+}
+
 
     /** 5️⃣ REGISTRAR RECORDS **/
-    private JPanel createRegistrarPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        JLabel label = new JLabel("Manage Registrar Records", SwingConstants.CENTER);
-        JTable table = new JTable();
-        JButton btnEdit = new JButton("Edit Registrar Info");
-        JButton btnDelete = new JButton("Delete Registrar");
+private JPanel createRegistrarPanel() {
+    JPanel panel = new JPanel(new BorderLayout());
+    JLabel label = new JLabel("Manage Registrar Records", SwingConstants.CENTER);
+    JTable table = new JTable();
+    JButton btnEdit = new JButton("Edit Registrar Info");
+    JButton btnDelete = new JButton("Delete Registrar");
 
-        btnDelete.addActionListener(e -> {
-            String id = JOptionPane.showInputDialog("Enter Registrar ID:");
-            try {
-                adminService.deleteRegistrar(id);
-                JOptionPane.showMessageDialog(this, "Registrar deleted.");
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage());
+    btnDelete.addActionListener(e -> {
+        String idOrEmail = JOptionPane.showInputDialog(this, "Enter Registrar ID or Email:");
+        try {
+            if (idOrEmail == null || idOrEmail.trim().isEmpty()) return;
+
+            Registrar registrar = findRegistrarByIdOrEmail(idOrEmail.trim());
+            if (registrar == null) {
+                JOptionPane.showMessageDialog(this, "Registrar not found: " + idOrEmail);
+                return;
             }
-        });
 
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(btnEdit);
-        buttonPanel.add(btnDelete);
+            adminService.deleteRegistrar(registrar);
+            JOptionPane.showMessageDialog(this, "Registrar deleted.");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    });
 
-        panel.add(label, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-        return panel;
-    }
+    JPanel buttonPanel = new JPanel();
+    buttonPanel.add(btnEdit);
+    buttonPanel.add(btnDelete);
+
+    panel.add(label, BorderLayout.NORTH);
+    panel.add(new JScrollPane(table), BorderLayout.CENTER);
+    panel.add(buttonPanel, BorderLayout.SOUTH);
+    return panel;
+}
 
     /** 6️⃣ ANALYTICS DASHBOARD **/
     private JPanel createAnalyticsPanel() {
@@ -348,31 +381,64 @@ public class AdminDashboard extends javax.swing.JPanel {
     }
 
     /** 7️⃣ PROFILE MANAGEMENT **/
-    private JPanel createProfilePanel() {
-        JPanel panel = new JPanel(new GridLayout(5, 2, 10, 10));
-        JLabel lblName = new JLabel("Name:");
-        JTextField txtName = new JTextField();
-        JLabel lblEmail = new JLabel("Email:");
-        JTextField txtEmail = new JTextField();
-        JLabel lblPassword = new JLabel("Password:");
-        JPasswordField txtPassword = new JPasswordField();
-        JButton btnSave = new JButton("Save Changes");
+private JPanel createProfilePanel() {
+    JPanel panel = new JPanel(new GridLayout(5, 2, 10, 10));
+    JLabel lblName = new JLabel("Name:");
+    JTextField txtName = new JTextField();
+    JLabel lblEmail = new JLabel("Email:");
+    JTextField txtEmail = new JTextField();
+    JLabel lblPassword = new JLabel("Password:");
+    JPasswordField txtPassword = new JPasswordField();
+    JButton btnSave = new JButton("Save Changes");
 
-        btnSave.addActionListener(e -> {
-            User currentUser = authService.getCurrentUser();
-            currentUser.setName(txtName.getText());
-            currentUser.setEmail(txtEmail.getText());
-            currentUser.setPassword(new String(txtPassword.getPassword()));
-            JOptionPane.showMessageDialog(this, "Profile updated!");
-        });
-
-        panel.add(lblName); panel.add(txtName);
-        panel.add(lblEmail); panel.add(txtEmail);
-        panel.add(lblPassword); panel.add(txtPassword);
-        panel.add(new JLabel()); panel.add(btnSave);
-        return panel;
+    // 預載目前使用者資料
+    User current = authService.getCurrentUser();
+    if (current != null && current.getPerson() != null) {
+        Person p = current.getPerson();
+        String full = (p.getFirstName() == null ? "" : p.getFirstName()) +
+                      (p.getLastName()  == null ? "" : (" " + p.getLastName()));
+        txtName.setText(full.trim());
+        txtEmail.setText(p.getEmail() == null ? "" : p.getEmail());
     }
-    
+
+    btnSave.addActionListener(e -> {
+        try {
+            User u = authService.getCurrentUser();
+            if (u == null) {
+                JOptionPane.showMessageDialog(this, "No user logged in.");
+                return;
+            }
+            Person p = u.getPerson();
+            if (p != null) {
+                // 名字拆成 first/last（簡易拆分）
+                String name = txtName.getText().trim();
+                if (!name.isEmpty()) {
+                    String[] parts = name.split("\\s+", 2);
+                    p.setFirstName(parts[0]);
+                    p.setLastName(parts.length > 1 ? parts[1] : "");
+                }
+                if (!txtEmail.getText().trim().isEmpty()) {
+                    p.setEmail(txtEmail.getText().trim());
+                }
+            }
+            String newPw = new String(txtPassword.getPassword()).trim();
+            if (!newPw.isEmpty()) {
+                u.setPassword(newPw);
+            }
+            JOptionPane.showMessageDialog(this, "Profile updated!");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error updating profile: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    });
+
+    panel.add(lblName); panel.add(txtName);
+    panel.add(lblEmail); panel.add(txtEmail);
+    panel.add(lblPassword); panel.add(txtPassword);
+    panel.add(new JLabel()); panel.add(btnSave);
+    return panel;
+}
+
     /** 
  * Helper: Search students by name (local search)
  */
