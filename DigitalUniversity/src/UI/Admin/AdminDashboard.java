@@ -48,13 +48,13 @@ public class AdminDashboard extends javax.swing.JPanel {
     }
     
     // ============================================================
-    // 1️⃣ USER ACCOUNT MANAGEMENT PANEL
+    // user account MANAGEMENT PANEL
     // ============================================================
     private JPanel createUserAccountPanel() {
     JPanel panel = new JPanel(new BorderLayout());
     JLabel title = new JLabel("Manage User Accounts", SwingConstants.CENTER);
 
-    // ✅ 使用 class-level model
+    // 使用 class-level model
     String[] columns = {"Username", "Role", "University ID"};
     userTableModel = new DefaultTableModel(columns, 0);
     userTable = new JTable(userTableModel);
@@ -69,7 +69,7 @@ public class AdminDashboard extends javax.swing.JPanel {
     JButton btnEdit = new JButton("Edit Account");
     JButton btnDelete = new JButton("Delete Account");
 
-    // ➕ 新增帳號按鈕
+    // 新增帳號按鈕
     btnAdd.addActionListener(e -> {
         String username = JOptionPane.showInputDialog(this, "Enter username:");
         if (username == null || username.trim().isEmpty()) return;
@@ -83,10 +83,10 @@ public class AdminDashboard extends javax.swing.JPanel {
                 JOptionPane.PLAIN_MESSAGE, null, roles, roles[0]);
         if (role == null) return;
 
-        // ✅ 自動產生唯一 University ID
+        // 產生唯一 University ID
         String uniId = generateUniversityId();
 
-        // ✅ 生成臨時 Person（防止 NullPointer / IllegalArgumentException）
+        // 生成臨時 Person（防止 NullPointer / IllegalArgumentException）
         Person tempPerson = new Person(
                 uniId,
                 username,          // firstName
@@ -94,16 +94,16 @@ public class AdminDashboard extends javax.swing.JPanel {
                 username + "@example.com"  // email
         );
 
-        // ✅ 呼叫後端 service
+        // 呼叫後端 service
         adminService.createUserAccount(username, password, role.toUpperCase(), tempPerson);
 
-        // ✅ 更新 JTable
+        // 更新 JTable
         userTableModel.addRow(new Object[]{username, role.toUpperCase(), uniId});
         userTableModel.fireTableDataChanged();
         JOptionPane.showMessageDialog(this, "✅ Account created successfully!");
     });
 
-    // ✏️ 編輯帳號
+    //  編輯帳號
     btnEdit.addActionListener(e -> {
         int row = userTable.getSelectedRow();
         if (row < 0) {
@@ -117,7 +117,7 @@ public class AdminDashboard extends javax.swing.JPanel {
         }
     });
 
-    // 🗑️ 刪除帳號
+    // ️ 刪除帳號
     btnDelete.addActionListener(e -> {
         int row = userTable.getSelectedRow();
         if (row < 0) {
@@ -155,16 +155,30 @@ private String generateUniversityId() {
         DefaultTableModel model = new DefaultTableModel(columns, 0);
         JTable table = new JTable(model);
         
+        model.addRow(new Object[]{"U2001", "Amy", "amy.student@northeastern.edu", "123-456-7890"});
+        model.addRow(new Object[]{"U2002", "Ben", "ben.learner@northeastern.edu", "987-654-3210"});
+        model.addRow(new Object[]{"U3001", "Chen", "emily.chen@northeastern.edu", "555-111-2222"});
+        model.addRow(new Object[]{"U3002", "Kim", "daniel.kim@northeastern.edu", "444-555-6666"});
+        
 
         JButton btnView = new JButton("View All");
         JButton btnEdit = new JButton("Edit Registrar Info");
         JButton btnDelete = new JButton("Delete Registrar");
 
         btnView.addActionListener(e -> {
-            model.setRowCount(0);
-            for (Registrar r : directory.getRegistrars()) {
-                model.addRow(new Object[]{r.getUniversityId(), r.getFullName(), r.getEmail()});
-            }
+           int row = table.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Please select a record to view details!");
+            return;
+        }
+
+        StringBuilder details = new StringBuilder();
+        details.append("University ID: ").append(model.getValueAt(row, 0)).append("\n");
+        details.append("Name: ").append(model.getValueAt(row, 1)).append("\n");
+        details.append("Email: ").append(model.getValueAt(row, 2)).append("\n");
+        details.append("Phone: ").append(model.getValueAt(row, 3)).append("\n");
+
+        JOptionPane.showMessageDialog(this, details.toString(), "Record Details", JOptionPane.INFORMATION_MESSAGE);
         });
 
         btnEdit.addActionListener(e -> {
@@ -275,7 +289,7 @@ private String generateUniversityId() {
 
         if (searchModel.getRowCount() == 0) {
             JOptionPane.showMessageDialog(this, "No records found matching: " + keyword);
-            // 🔁 恢復原始資料
+            // 恢復原始資料
             table.setModel(model);
         } else {
             table.setModel(searchModel);
