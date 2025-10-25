@@ -5,160 +5,33 @@
 package UI.Admin;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import accesscontrol.*;
+import business.*;
 import model.*;
 import utility.*;
-import business.*;
+import java.util.List;
 
 /**
  *
  * @author USER
  */
 public class AdminDashboard extends javax.swing.JPanel {
-    private JTabbedPane tabbedPane;
-private JPanel userAccountPanel;
-private JPanel personRegistrationPanel;
-private JPanel studentPanel;
-private JPanel facultyPanel;
-private JPanel registrarPanel;
-private JPanel analyticsPanel;
-private JPanel profilePanel;
+     private JTabbedPane tabbedPane;
 
-
-private AdminService adminService;
-private ReportService reportService;
-private SearchService searchService;
-private UniversityDirectory directory;
-private AuthenticationService authService;
+    private AdminService adminService;
+    private ReportService reportService;
+    private SearchService searchService;
+    private UniversityDirectory directory;
+    private AuthenticationService authService;
 
     /**
      * Creates new form AdminDashboard
      */
     public AdminDashboard(UniversityDirectory directory) {
-        this.directory = directory;
-        this.adminService = new AdminService();
-        this.reportService = new ReportService();
-        this.searchService = new SearchService();
-        this.authService = AuthenticationService.getInstance();
-
-
-        setLayout(new BorderLayout());
-        tabbedPane = new JTabbedPane();
-
-
-        // Initialize tabs
-        userAccountPanel = createUserAccountPanel();
-        personRegistrationPanel = new JPanel();  // placeholder
-        studentPanel = new JPanel(); 
-        facultyPanel = createFacultyPanel();
-        registrarPanel = createRegistrarPanel();
-        analyticsPanel = createAnalyticsPanel();
-        profilePanel = createProfilePanel();
-
-
-        tabbedPane.addTab("User Accounts", userAccountPanel);
-        tabbedPane.addTab("Person Registration", personRegistrationPanel);
-        tabbedPane.addTab("Student Records", studentPanel);
-        tabbedPane.addTab("Faculty Records", facultyPanel);
-        tabbedPane.addTab("Registrar Records", registrarPanel);
-        tabbedPane.addTab("Analytics Dashboard", analyticsPanel);
-        tabbedPane.addTab("Profile Management", profilePanel);
-
-
-        add(tabbedPane, BorderLayout.CENTER);
+        initComponents();
     }
-    private JPanel createUserAccountPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        JLabel label = new JLabel("Manage User Accounts", SwingConstants.CENTER);
-        JTable table = new JTable();
-        JButton btnAdd = new JButton("Add Account");
-        JButton btnEdit = new JButton("Edit Account");
-        JButton btnDelete = new JButton("Delete Account");
-
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(btnAdd);
-        buttonPanel.add(btnEdit);
-        buttonPanel.add(btnDelete);
-
-        panel.add(label, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-
-        return panel;
-}
-
-
-/** FACULTY RECORDS TAB */
-private JPanel createFacultyPanel() {
-JPanel panel = new JPanel(new BorderLayout());
-JLabel label = new JLabel("Manage Faculty Records", SwingConstants.CENTER);
-JTable table = new JTable();
-JButton btnAssignCourse = new JButton("Assign to Course");
-
-
-panel.add(label, BorderLayout.NORTH);
-panel.add(new JScrollPane(table), BorderLayout.CENTER);
-panel.add(btnAssignCourse, BorderLayout.SOUTH);
-return panel;
-}
-
-
-/** REGISTRAR RECORDS TAB */
-private JPanel createRegistrarPanel() {
-JPanel panel = new JPanel(new BorderLayout());
-JLabel label = new JLabel("Manage Registrar Records", SwingConstants.CENTER);
-JTable table = new JTable();
-JButton btnEdit = new JButton("Edit Registrar");
-JButton btnDelete = new JButton("Delete Registrar");
-
-
-JPanel buttonPanel = new JPanel();
-buttonPanel.add(btnEdit);
-buttonPanel.add(btnDelete);
-
-
-panel.add(label, BorderLayout.NORTH);
-panel.add(new JScrollPane(table), BorderLayout.CENTER);
-panel.add(buttonPanel, BorderLayout.SOUTH);
-return panel;
-}
-
-
-/** ANALYTICS TAB */
-private JPanel createAnalyticsPanel() {
-JPanel panel = new JPanel(new BorderLayout());
-JLabel label = new JLabel("University Analytics Dashboard", SwingConstants.CENTER);
-JTextArea reportArea = new JTextArea();
-reportArea.setEditable(false);
-JButton btnGenerate = new JButton("Generate Report");
-
-
-panel.add(label, BorderLayout.NORTH);
-panel.add(new JScrollPane(reportArea), BorderLayout.CENTER);
-panel.add(btnGenerate, BorderLayout.SOUTH);
-return panel;
-}
-
-
-/** PROFILE MANAGEMENT TAB */
-private JPanel createProfilePanel() {
-JPanel panel = new JPanel(new GridLayout(5, 2, 10, 10));
-JLabel lblName = new JLabel("Name:");
-JTextField txtName = new JTextField();
-JLabel lblEmail = new JLabel("Email:");
-JTextField txtEmail = new JTextField();
-JLabel lblPassword = new JLabel("Password:");
-JPasswordField txtPassword = new JPasswordField();
-JButton btnSave = new JButton("Save Changes");
-
-
-panel.add(lblName); panel.add(txtName);
-panel.add(lblEmail); panel.add(txtEmail);
-panel.add(lblPassword); panel.add(txtPassword);
-panel.add(new JLabel()); panel.add(btnSave);
-return panel;
-}
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -169,19 +42,59 @@ return panel;
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        jButton1 = new javax.swing.JButton();
+        jButton2 = new javax.swing.JButton();
+        jButton3 = new javax.swing.JButton();
+        jButton4 = new javax.swing.JButton();
+        jButton5 = new javax.swing.JButton();
+
+        jButton1.setText("jButton1");
+
+        jButton2.setText("jButton2");
+
+        jButton3.setText("jButton3");
+
+        jButton4.setText("jButton4");
+
+        jButton5.setText("jButton5");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 400, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addGap(119, 119, 119)
+                .addComponent(jButton1)
+                .addGap(42, 42, 42)
+                .addComponent(jButton2)
+                .addGap(42, 42, 42)
+                .addComponent(jButton3)
+                .addGap(18, 18, 18)
+                .addComponent(jButton4)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jButton5)
+                .addContainerGap(334, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 300, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addGap(93, 93, 93)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jButton1)
+                    .addComponent(jButton2)
+                    .addComponent(jButton3)
+                    .addComponent(jButton4)
+                    .addComponent(jButton5))
+                .addContainerGap(373, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton jButton1;
+    private javax.swing.JButton jButton2;
+    private javax.swing.JButton jButton3;
+    private javax.swing.JButton jButton4;
+    private javax.swing.JButton jButton5;
     // End of variables declaration//GEN-END:variables
 }
