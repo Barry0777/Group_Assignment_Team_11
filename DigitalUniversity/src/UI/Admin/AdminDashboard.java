@@ -69,6 +69,7 @@ public class AdminDashboard extends javax.swing.JPanel {
     JButton btnEdit = new JButton("Edit Account");
     JButton btnDelete = new JButton("Delete Account");
 
+    // ➕ 新增帳號按鈕
     btnAdd.addActionListener(e -> {
         String username = JOptionPane.showInputDialog(this, "Enter username:");
         if (username == null || username.trim().isEmpty()) return;
@@ -82,15 +83,27 @@ public class AdminDashboard extends javax.swing.JPanel {
                 JOptionPane.PLAIN_MESSAGE, null, roles, roles[0]);
         if (role == null) return;
 
+        // ✅ 自動產生唯一 University ID
         String uniId = generateUniversityId();
-        adminService.createUserAccount(username, password, role.toUpperCase(), null);
 
-        // ✅ 使用 class-level model
+        // ✅ 生成臨時 Person（防止 NullPointer / IllegalArgumentException）
+        Person tempPerson = new Person(
+                uniId,
+                username,          // firstName
+                "",                // lastName
+                username + "@example.com"  // email
+        );
+
+        // ✅ 呼叫後端 service
+        adminService.createUserAccount(username, password, role.toUpperCase(), tempPerson);
+
+        // ✅ 更新 JTable
         userTableModel.addRow(new Object[]{username, role.toUpperCase(), uniId});
         userTableModel.fireTableDataChanged();
         JOptionPane.showMessageDialog(this, "✅ Account created successfully!");
     });
 
+    // ✏️ 編輯帳號
     btnEdit.addActionListener(e -> {
         int row = userTable.getSelectedRow();
         if (row < 0) {
@@ -104,6 +117,7 @@ public class AdminDashboard extends javax.swing.JPanel {
         }
     });
 
+    // 🗑️ 刪除帳號
     btnDelete.addActionListener(e -> {
         int row = userTable.getSelectedRow();
         if (row < 0) {
@@ -124,6 +138,7 @@ public class AdminDashboard extends javax.swing.JPanel {
     panel.add(buttons, BorderLayout.SOUTH);
     return panel;
 }
+
 
 private String generateUniversityId() {
     return "U" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -234,22 +249,37 @@ private String generateUniversityId() {
         });
 
         btnSearch.addActionListener(e -> {
-            String keyword = JOptionPane.showInputDialog(this, "Enter name, ID, or department:");
-            model.setRowCount(0);
-            for (Student s : directory.getStudents()) {
-                if (s.getFullName().toLowerCase().contains(keyword.toLowerCase())
-                        || s.getUniversityId().equalsIgnoreCase(keyword)
-                        || (s.getProgram() != null && s.getProgram().equalsIgnoreCase(keyword))) {
-                    model.addRow(new Object[]{"Student", s.getUniversityId(), s.getFullName(), s.getProgram(), s.getEmail()});
-                }
+        String keyword = JOptionPane.showInputDialog(this, "Enter name, ID, or department:");
+        if (keyword == null || keyword.trim().isEmpty()) return;
+
+        keyword = keyword.toLowerCase();
+        DefaultTableModel searchModel = new DefaultTableModel(columns, 0);
+
+        // 搜尋 JTable 內目前的資料
+        for (int i = 0; i < model.getRowCount(); i++) {
+            String name = model.getValueAt(i, 2).toString().toLowerCase();
+            String id = model.getValueAt(i, 1).toString().toLowerCase();
+            String dept = model.getValueAt(i, 3).toString().toLowerCase();
+
+            if (name.contains(keyword) || id.contains(keyword) || dept.contains(keyword)) {
+                searchModel.addRow(new Object[]{
+                    model.getValueAt(i, 0),
+                    model.getValueAt(i, 1),
+                    model.getValueAt(i, 2),
+                    model.getValueAt(i, 3),
+                    model.getValueAt(i, 4),
+                    model.getValueAt(i, 5)
+                });
             }
-            for (Faculty f : directory.getFaculties()) {
-                if (f.getFullName().toLowerCase().contains(keyword.toLowerCase())
-                        || f.getUniversityId().equalsIgnoreCase(keyword)
-                        || (f.getDepartment() != null && f.getDepartment().getName().equalsIgnoreCase(keyword))) {
-                    model.addRow(new Object[]{"Faculty", f.getUniversityId(), f.getFullName(), f.getDepartment().getName(), f.getEmail()});
-                }
-            }
+        }
+
+        if (searchModel.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "No records found matching: " + keyword);
+            // 🔁 恢復原始資料
+            table.setModel(model);
+        } else {
+            table.setModel(searchModel);
+        }
         });
 
         JPanel buttons = new JPanel();
