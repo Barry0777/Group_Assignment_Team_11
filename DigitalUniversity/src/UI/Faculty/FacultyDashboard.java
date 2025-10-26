@@ -18,6 +18,8 @@ public class FacultyDashboard extends javax.swing.JPanel {
     
     private javax.swing.table.DefaultTableModel courseModel;
     private java.util.List<model.CourseOffering> current = new java.util.ArrayList<>();
+    
+    private javax.swing.table.DefaultTableModel studentsModel;
 
     
     public FacultyDashboard() {
@@ -52,19 +54,16 @@ public class FacultyDashboard extends javax.swing.JPanel {
         courseTable.setAutoCreateRowSorter(true);         
         courseTable.setFillsViewportHeight(true);
 
-        // 2) 学期下拉
         cmbSem.removeAllItems();
         for (model.Semester s : dir.getSemesters()) cmbSem.addItem(s);
         model.Semester sem = (model.Semester) cmbSem.getSelectedItem();
 
-        // 3) 事件
         cmbSem.addActionListener(e -> loadCourses());
         btnSave.addActionListener(e -> saveCourses());
         btnOpen.addActionListener(e -> toggleEnrollment(true));
         btnClose.addActionListener(e -> toggleEnrollment(false));
         btnUpload.addActionListener(e -> chooseSyllabus());
 
-        // 4) 首次加载
         if (cmbSem.getItemCount() > 0) cmbSem.setSelectedIndex(0);
         loadCourses();
     }
@@ -104,7 +103,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
                 String syllabus = String.valueOf(courseModel.getValueAt(r,6)).trim();
 
                 if (!utility.ValidationUtility.isNotEmpty(title) || !utility.ValidationUtility.isNotEmpty(room))
-                    throw new IllegalArgumentException("Title and Room/Schedule cannot be empty.");
+                    throw new IllegalArgumentException("Title and Room cannot be empty.");
                 if (!utility.ValidationUtility.isValidInteger(capStr) || Integer.parseInt(capStr) <= 0)
                     throw new IllegalArgumentException("Capacity must be a positive integer.");
 
@@ -124,35 +123,168 @@ public class FacultyDashboard extends javax.swing.JPanel {
         }
         javax.swing.JOptionPane.showMessageDialog(this, "Saved successfully.");
         loadCourses();
-}
+    }
 
-private void toggleEnrollment(boolean open) {
-    int row = courseTable.getSelectedRow();
-    if (row < 0) { javax.swing.JOptionPane.showMessageDialog(this, "Please select a course first."); return; }
-    try {
-        var co = current.get(row);
-        if (open) fs.openEnrollment(co); else fs.closeEnrollment(co);
-        javax.swing.JOptionPane.showMessageDialog(this, (open ? "Enrollment has been opened for this course." : "Enrollment has been closed for this course") );
-        loadCourses();
-    } catch (IllegalArgumentException ex) {
-        javax.swing.JOptionPane.showMessageDialog(this, ex.getMessage(), "Action Error",
-                javax.swing.JOptionPane.ERROR_MESSAGE);
+    private void toggleEnrollment(boolean open) {
+        int row = courseTable.getSelectedRow();
+        if (row < 0) { javax.swing.JOptionPane.showMessageDialog(this, "Please select a course first."); return; }
+        try {
+            var co = current.get(row);
+            if (open) fs.openEnrollment(co); else fs.closeEnrollment(co);
+            javax.swing.JOptionPane.showMessageDialog(this, (open ? "Enrollment has been opened for this course." : "Enrollment has been closed for this course") );
+            loadCourses();
+        } catch (IllegalArgumentException ex) {
+            javax.swing.JOptionPane.showMessageDialog(this, ex.getMessage(), "Action Error",
+                    javax.swing.JOptionPane.ERROR_MESSAGE);
+        }
     }
-}
 
-private void chooseSyllabus() {
-    int row = courseTable.getSelectedRow();
-    if (row < 0) { javax.swing.JOptionPane.showMessageDialog(this, "Please select a course first."); return; }
-    var fc = new javax.swing.JFileChooser();
-    fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("PDF/DOC", "pdf","doc","docx"));
-    if (fc.showOpenDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
-        courseModel.setValueAt(fc.getSelectedFile().getAbsolutePath(), row, 6);
+    private void chooseSyllabus() {
+        int row = courseTable.getSelectedRow();
+        if (row < 0) { javax.swing.JOptionPane.showMessageDialog(this, "Please select a course first."); return; }
+        var fc = new javax.swing.JFileChooser();
+        fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("PDF/DOC", "pdf","doc","docx"));
+        if (fc.showOpenDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+            courseModel.setValueAt(fc.getSelectedFile().getAbsolutePath(), row, 6);
+        }
     }
+    private void initStudentsTab() {
+        tabStudents.setLayout(new java.awt.BorderLayout());
+
+        studentsModel = new javax.swing.table.DefaultTableModel(
+            new Object[]{"Student#", "Name", "Email", "Progress %", "Letter"}, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        tblStudents.setModel(studentsModel);
+        tblStudents.setAutoCreateRowSorter(true);
+        tblStudents.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+
+        cmbStuCourse.removeAllItems();
+        for (model.CourseOffering co : me.getAssignedCourses()) cmbStuCourse.addItem(co);
+
+        cmbStuCourse.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override public java.awt.Component getListCellRendererComponent(
+                javax.swing.JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof model.CourseOffering) {
+                    model.CourseOffering co = (model.CourseOffering) value;
+                    // 如果 Course 的方法名不同，按你们模型改：getCourseId()/getTitle()
+                    setText(co.getCourse().getTitle() + " (" + co.getCourse().getCourseId() + ") - " + co.getSemester());
+                }
+                return this;
+            }
+        });
+
+        cmbStuCourse.addActionListener(e -> reloadStudents());
+        btnStuRefresh.addActionListener(e -> reloadStudents());
+        btnViewProgress.addActionListener(e -> showProgress());
+        btnTranscript.addActionListener(e -> showTranscript());
+
+        if (cmbStuCourse.getItemCount() > 0) cmbStuCourse.setSelectedIndex(0);
+        reloadStudents();
     }
-    private void initStudentsTab() { }
     private void initGradingTab()  { }
     private void initReportsTab()  { }
     private void initProfileTab()  { }
+    
+    private void reloadStudents() {
+        studentsModel.setRowCount(0);
+        model.CourseOffering co = (model.CourseOffering) cmbStuCourse.getSelectedItem();
+        if (co == null) return;
+        try {
+            java.util.List<model.Student> list = fs.getEnrolledStudents(co);
+            for (model.Student s : list) {
+                var prog = fs.getStudentProgress(s, co);
+                double pct = (double) prog.get("percentage");              // 0-100
+                String letter = business.GradeCalculator.calculateLetterGrade(pct);
+                studentsModel.addRow(new Object[]{
+                    s.getUniversityId(),
+                    s.getFirstName() + " " + s.getLastName(),
+                    s.getEmail(),
+                    String.format("%.2f", pct),
+                    letter
+                });
+            }
+        } catch (IllegalArgumentException ex) { error(ex.getMessage()); }
+    }
+
+    private model.Student getSelectedStudent() {
+        int row = tblStudents.getSelectedRow();
+        if (row < 0) return null;
+        String sid = String.valueOf(studentsModel.getValueAt(row, 0));
+        model.CourseOffering co = (model.CourseOffering) cmbStuCourse.getSelectedItem();
+        if (co == null) return null;
+        for (model.Student s : fs.getEnrolledStudents(co)) {
+            if (sid.equals(s.getUniversityId())) return s;
+        }
+        return null;
+    }
+
+    private void showProgress() {
+        model.CourseOffering co = (model.CourseOffering) cmbStuCourse.getSelectedItem();
+        model.Student s = getSelectedStudent();
+        if (co == null || s == null) { info("Please select a student row."); return; }
+        try {
+            var prog = fs.getStudentProgress(s, co);
+            double pct = (double) prog.get("percentage");
+            String letter = business.GradeCalculator.calculateLetterGrade(pct);
+            javax.swing.JTextArea ta = new javax.swing.JTextArea(
+                s.getFirstName()+" "+s.getLastName()+"\n"+
+                "Progress: "+String.format("%.2f", pct)+"% ("+letter+")", 10, 40);
+            ta.setEditable(false);
+            javax.swing.JOptionPane.showMessageDialog(this, new javax.swing.JScrollPane(ta),
+                "Progress", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        } catch (IllegalArgumentException ex) { error(ex.getMessage()); }
+    }
+
+    private void showTranscript() {
+        model.Student s = getSelectedStudent();
+        if (s == null) { info("Please select a student row."); return; }
+        try {
+            java.util.List<model.Enrollment> list = fs.getStudentTranscript(s);
+        if (list == null || list.isEmpty()) { info("No transcript records found."); return; }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(s.getFirstName()).append(" ").append(s.getLastName()).append("\n\n");
+
+        for (var e : list) {
+            String line;
+            try {
+                    var co     = e.getCourseOffering();      
+                    var course = co.getCourse();
+                    String code  = course.getCourseId();      
+                    String title = course.getTitle();          
+                    String sem   = String.valueOf(co.getSemester());
+                    
+                    line = String.format("%s (%s) — %s", title, code, sem);
+                } catch (Exception ignore) {
+                    
+                    line = String.valueOf(e);
+                }
+                sb.append(line).append("\n");
+            }
+
+            javax.swing.JTextArea ta = new javax.swing.JTextArea(sb.toString(), 18, 60);
+            ta.setEditable(false);
+            javax.swing.JOptionPane.showMessageDialog(
+                this, new javax.swing.JScrollPane(ta),
+                "Transcript Summary", javax.swing.JOptionPane.INFORMATION_MESSAGE
+            );
+        } catch (IllegalArgumentException ex) { error(ex.getMessage()); }
+    }
+    
+    private void info(String msg) {
+        javax.swing.JOptionPane.showMessageDialog(
+            this, msg, "Info", javax.swing.JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+    private void error(String msg) {
+        javax.swing.JOptionPane.showMessageDialog(
+            this, msg, "Error", javax.swing.JOptionPane.ERROR_MESSAGE
+        );
+    }
+
+
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -261,7 +393,7 @@ private void chooseSyllabus() {
 
         lblCourse.setText("Course");
 
-        cmbStuCourse.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        cmbStuCourse.setModel(new javax.swing.DefaultComboBoxModel<model.CourseOffering>());
 
         btnStuRefresh.setText("Refresh");
         btnStuRefresh.addActionListener(new java.awt.event.ActionListener() {
@@ -379,7 +511,7 @@ private void chooseSyllabus() {
     private javax.swing.JButton btnUpload;
     private javax.swing.JButton btnViewProgress;
     private javax.swing.JComboBox<model.Semester> cmbSem;
-    private javax.swing.JComboBox<String> cmbStuCourse;
+    private javax.swing.JComboBox<model.CourseOffering> cmbStuCourse;
     private javax.swing.JTable courseTable;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
