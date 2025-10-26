@@ -322,6 +322,20 @@ public class FacultyDashboard extends javax.swing.JPanel {
         jScrollPane2 = new javax.swing.JScrollPane();
         tblStudents = new javax.swing.JTable();
         tabGrading = new javax.swing.JPanel();
+        jPanel3 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        cmbGradeCourse = new javax.swing.JComboBox<>();
+        btnLoadAssgn = new javax.swing.JButton();
+        btnAddAssgn = new javax.swing.JButton();
+        btnSaveGrades = new javax.swing.JButton();
+        btnAutoFinal = new javax.swing.JButton();
+        btnRank = new javax.swing.JButton();
+        btnClassGpa = new javax.swing.JButton();
+        jPanel4 = new javax.swing.JPanel();
+        jScrollPane3 = new javax.swing.JScrollPane();
+        lstAssignments = new javax.swing.JList<>();
+        jScrollPane4 = new javax.swing.JScrollPane();
+        tblGrades = new javax.swing.JTable();
         tabReports = new javax.swing.JPanel();
         tabProfile = new javax.swing.JPanel();
 
@@ -460,16 +474,118 @@ public class FacultyDashboard extends javax.swing.JPanel {
 
         tabs.addTab("Students", tabStudents);
 
-        javax.swing.GroupLayout tabGradingLayout = new javax.swing.GroupLayout(tabGrading);
-        tabGrading.setLayout(tabGradingLayout);
-        tabGradingLayout.setHorizontalGroup(
-            tabGradingLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 746, Short.MAX_VALUE)
+        tabGrading.setLayout(new java.awt.BorderLayout());
+
+        jLabel1.setText("Course");
+
+        cmbGradeCourse.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        btnLoadAssgn.setText("Load");
+
+        btnAddAssgn.setText("New");
+
+        btnSaveGrades.setText("Save Grades");
+
+        btnAutoFinal.setText("Auto Final Grade");
+        btnAutoFinal.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnAutoFinalActionPerformed(evt);
+            }
+        });
+
+        btnRank.setText("Rank");
+
+        btnClassGpa.setText("Class GPA");
+
+        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
+        jPanel3.setLayout(jPanel3Layout);
+        jPanel3Layout.setHorizontalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addGap(41, 41, 41)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(btnAutoFinal)
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(jLabel1)
+                        .addGap(18, 18, 18)
+                        .addComponent(cmbGradeCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(118, 118, 118)
+                        .addComponent(btnLoadAssgn)))
+                .addGap(58, 58, 58)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(btnAddAssgn)
+                    .addComponent(btnRank))
+                .addGap(58, 58, 58)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(btnSaveGrades)
+                    .addComponent(btnClassGpa))
+                .addContainerGap(99, Short.MAX_VALUE))
         );
-        tabGradingLayout.setVerticalGroup(
-            tabGradingLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 478, Short.MAX_VALUE)
+        jPanel3Layout.setVerticalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addGap(24, 24, 24)
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel1)
+                            .addComponent(cmbGradeCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addGap(14, 14, 14)
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(btnLoadAssgn)
+                            .addComponent(btnAddAssgn)
+                            .addComponent(btnSaveGrades))))
+                .addGap(18, 18, 18)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(btnAutoFinal)
+                    .addComponent(btnRank)
+                    .addComponent(btnClassGpa))
+                .addContainerGap(25, Short.MAX_VALUE))
         );
+
+        tabGrading.add(jPanel3, java.awt.BorderLayout.PAGE_START);
+
+        lstAssignments.setModel(new javax.swing.AbstractListModel<String>() {
+            String[] strings = { "Item 1", "Item 2", "Item 3", "Item 4", "Item 5" };
+            public int getSize() { return strings.length; }
+            public String getElementAt(int i) { return strings[i]; }
+        });
+        jScrollPane3.setViewportView(lstAssignments);
+
+        javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
+        jPanel4.setLayout(jPanel4Layout);
+        jPanel4Layout.setHorizontalGroup(
+            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel4Layout.createSequentialGroup()
+                .addGap(24, 24, 24)
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(25, Short.MAX_VALUE))
+        );
+        jPanel4Layout.setVerticalGroup(
+            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel4Layout.createSequentialGroup()
+                .addGap(50, 50, 50)
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(161, Short.MAX_VALUE))
+        );
+
+        tabGrading.add(jPanel4, java.awt.BorderLayout.LINE_START);
+
+        tblGrades.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4"
+            }
+        ));
+        jScrollPane4.setViewportView(tblGrades);
+
+        tabGrading.add(jScrollPane4, java.awt.BorderLayout.CENTER);
 
         tabs.addTab("Grading & Ranking", tabGrading);
 
@@ -506,31 +622,49 @@ public class FacultyDashboard extends javax.swing.JPanel {
         // TODO add your handling code here:
     }//GEN-LAST:event_btnStuRefreshActionPerformed
 
+    private void btnAutoFinalActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAutoFinalActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnAutoFinalActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnAddAssgn;
+    private javax.swing.JButton btnAutoFinal;
+    private javax.swing.JButton btnClassGpa;
     private javax.swing.JButton btnClose;
+    private javax.swing.JButton btnLoadAssgn;
     private javax.swing.JButton btnOpen;
+    private javax.swing.JButton btnRank;
     private javax.swing.JButton btnSave;
+    private javax.swing.JButton btnSaveGrades;
     private javax.swing.JButton btnStuRefresh;
     private javax.swing.JButton btnTranscript;
     private javax.swing.JButton btnUpload;
     private javax.swing.JButton btnViewProgress;
+    private javax.swing.JComboBox<String> cmbGradeCourse;
     private javax.swing.JComboBox<model.Semester> cmbSem;
     private javax.swing.JComboBox<model.CourseOffering> cmbStuCourse;
     private javax.swing.JTable courseTable;
+    private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
+    private javax.swing.JPanel jPanel3;
+    private javax.swing.JPanel jPanel4;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JScrollPane jScrollPane3;
+    private javax.swing.JScrollPane jScrollPane4;
     private javax.swing.JLabel lblCourse;
     private javax.swing.JLabel lblHeader;
     private javax.swing.JLabel lblSemester;
+    private javax.swing.JList<String> lstAssignments;
     private javax.swing.JPanel tabCourses;
     private javax.swing.JPanel tabGrading;
     private javax.swing.JPanel tabProfile;
     private javax.swing.JPanel tabReports;
     private javax.swing.JPanel tabStudents;
     private javax.swing.JTabbedPane tabs;
+    private javax.swing.JTable tblGrades;
     private javax.swing.JTable tblStudents;
     // End of variables declaration//GEN-END:variables
 }
