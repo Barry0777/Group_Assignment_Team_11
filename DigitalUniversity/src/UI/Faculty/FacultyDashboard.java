@@ -176,6 +176,14 @@ private void chooseSyllabus() {
         jScrollPane1 = new javax.swing.JScrollPane();
         courseTable = new javax.swing.JTable();
         tabStudents = new javax.swing.JPanel();
+        jPanel2 = new javax.swing.JPanel();
+        lblCourse = new javax.swing.JLabel();
+        cmbStuCourse = new javax.swing.JComboBox<>();
+        btnStuRefresh = new javax.swing.JButton();
+        btnViewProgress = new javax.swing.JButton();
+        btnTranscript = new javax.swing.JButton();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        tblStudents = new javax.swing.JTable();
         tabGrading = new javax.swing.JPanel();
         tabReports = new javax.swing.JPanel();
         tabProfile = new javax.swing.JPanel();
@@ -249,16 +257,69 @@ private void chooseSyllabus() {
 
         tabs.addTab("My Courses", tabCourses);
 
-        javax.swing.GroupLayout tabStudentsLayout = new javax.swing.GroupLayout(tabStudents);
-        tabStudents.setLayout(tabStudentsLayout);
-        tabStudentsLayout.setHorizontalGroup(
-            tabStudentsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 746, Short.MAX_VALUE)
+        tabStudents.setLayout(new java.awt.BorderLayout());
+
+        lblCourse.setText("Course");
+
+        cmbStuCourse.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        btnStuRefresh.setText("Refresh");
+        btnStuRefresh.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnStuRefreshActionPerformed(evt);
+            }
+        });
+
+        btnViewProgress.setText("View Progress");
+
+        btnTranscript.setText("Transcript");
+
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addGap(33, 33, 33)
+                .addComponent(lblCourse)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(cmbStuCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(147, 147, 147)
+                .addComponent(btnStuRefresh)
+                .addGap(18, 18, 18)
+                .addComponent(btnViewProgress)
+                .addGap(18, 18, 18)
+                .addComponent(btnTranscript)
+                .addContainerGap(137, Short.MAX_VALUE))
         );
-        tabStudentsLayout.setVerticalGroup(
-            tabStudentsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 478, Short.MAX_VALUE)
+        jPanel2Layout.setVerticalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addGap(15, 15, 15)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblCourse)
+                    .addComponent(cmbStuCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnStuRefresh)
+                    .addComponent(btnViewProgress)
+                    .addComponent(btnTranscript))
+                .addContainerGap(65, Short.MAX_VALUE))
         );
+
+        tabStudents.add(jPanel2, java.awt.BorderLayout.PAGE_START);
+
+        tblStudents.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4"
+            }
+        ));
+        jScrollPane2.setViewportView(tblStudents);
+
+        tabStudents.add(jScrollPane2, java.awt.BorderLayout.CENTER);
 
         tabs.addTab("Students", tabStudents);
 
@@ -304,16 +365,27 @@ private void chooseSyllabus() {
         add(tabs, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
 
+    private void btnStuRefreshActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnStuRefreshActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnStuRefreshActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnClose;
     private javax.swing.JButton btnOpen;
     private javax.swing.JButton btnSave;
+    private javax.swing.JButton btnStuRefresh;
+    private javax.swing.JButton btnTranscript;
     private javax.swing.JButton btnUpload;
+    private javax.swing.JButton btnViewProgress;
     private javax.swing.JComboBox<model.Semester> cmbSem;
+    private javax.swing.JComboBox<String> cmbStuCourse;
     private javax.swing.JTable courseTable;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JLabel lblCourse;
     private javax.swing.JLabel lblHeader;
     private javax.swing.JLabel lblSemester;
     private javax.swing.JPanel tabCourses;
@@ -322,5 +394,6 @@ private void chooseSyllabus() {
     private javax.swing.JPanel tabReports;
     private javax.swing.JPanel tabStudents;
     private javax.swing.JTabbedPane tabs;
+    private javax.swing.JTable tblStudents;
     // End of variables declaration//GEN-END:variables
 }
