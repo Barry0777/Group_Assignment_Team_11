@@ -13,37 +13,38 @@ import model.Faculty;
  */
 public class FacultyDashboard extends javax.swing.JPanel {
     
-    private final Faculty me;
+    private model.Faculty me;
 
-    public FacultyDashboard(Faculty me) {
-        this.me = me;
-        setLayout(new java.awt.BorderLayout());
-
-        String displayName = (me != null) ? this.me.getFirstName() + " " + this.me.getLastName() : "";
-        JLabel header = new JLabel("Faculty Dashboard — " + displayName);
-
-        header.setFont(header.getFont().deriveFont(Font.BOLD, 16f));
-        header.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
-
-        JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("My Courses", new JPanel());
-        tabs.addTab("Students", new JPanel());
-        tabs.addTab("Grading & Ranking", new JPanel());
-        tabs.addTab("Reports & Tuition", new JPanel());
-        tabs.addTab("My Profile", new JPanel());
-
-        add(header, BorderLayout.NORTH);
-        add(tabs, BorderLayout.CENTER);
-    }
-
-    /**
-     * Creates new form FacultyDashboard
-     */
+    
     public FacultyDashboard() {
-        this(null);
         initComponents();
        
     }
+    
+    public FacultyDashboard(model.Faculty me) {  
+        this();
+        this.me = me;
+        afterInit();                 
+    }
+    
+    private void afterInit() {
+        String name = (me != null) ? me.getFirstName() + " " + me.getLastName() : "";
+        lblHeader.setText("Faculty Dashboard — " + name);
+
+        initCoursesTab();
+        initStudentsTab();
+        initGradingTab();
+        initReportsTab();
+        initProfileTab();
+    }
+    
+    private void initCoursesTab() {
+        
+    }
+    private void initStudentsTab() { }
+    private void initGradingTab()  { }
+    private void initReportsTab()  { }
+    private void initProfileTab()  { }
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -54,19 +55,95 @@ public class FacultyDashboard extends javax.swing.JPanel {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 400, Short.MAX_VALUE)
+        lblHeader = new javax.swing.JLabel();
+        tabs = new javax.swing.JTabbedPane();
+        tabCourses = new javax.swing.JPanel();
+        tabStudents = new javax.swing.JPanel();
+        tabGrading = new javax.swing.JPanel();
+        tabReports = new javax.swing.JPanel();
+        tabProfile = new javax.swing.JPanel();
+
+        setLayout(new java.awt.BorderLayout());
+
+        lblHeader.setText("Faculty Dashboard");
+        add(lblHeader, java.awt.BorderLayout.PAGE_START);
+
+        javax.swing.GroupLayout tabCoursesLayout = new javax.swing.GroupLayout(tabCourses);
+        tabCourses.setLayout(tabCoursesLayout);
+        tabCoursesLayout.setHorizontalGroup(
+            tabCoursesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 746, Short.MAX_VALUE)
         );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 300, Short.MAX_VALUE)
+        tabCoursesLayout.setVerticalGroup(
+            tabCoursesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 478, Short.MAX_VALUE)
         );
+
+        tabs.addTab("My Courses", tabCourses);
+
+        javax.swing.GroupLayout tabStudentsLayout = new javax.swing.GroupLayout(tabStudents);
+        tabStudents.setLayout(tabStudentsLayout);
+        tabStudentsLayout.setHorizontalGroup(
+            tabStudentsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 746, Short.MAX_VALUE)
+        );
+        tabStudentsLayout.setVerticalGroup(
+            tabStudentsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 478, Short.MAX_VALUE)
+        );
+
+        tabs.addTab("Students", tabStudents);
+
+        javax.swing.GroupLayout tabGradingLayout = new javax.swing.GroupLayout(tabGrading);
+        tabGrading.setLayout(tabGradingLayout);
+        tabGradingLayout.setHorizontalGroup(
+            tabGradingLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 746, Short.MAX_VALUE)
+        );
+        tabGradingLayout.setVerticalGroup(
+            tabGradingLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 478, Short.MAX_VALUE)
+        );
+
+        tabs.addTab("Grading & Ranking", tabGrading);
+
+        javax.swing.GroupLayout tabReportsLayout = new javax.swing.GroupLayout(tabReports);
+        tabReports.setLayout(tabReportsLayout);
+        tabReportsLayout.setHorizontalGroup(
+            tabReportsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 746, Short.MAX_VALUE)
+        );
+        tabReportsLayout.setVerticalGroup(
+            tabReportsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 478, Short.MAX_VALUE)
+        );
+
+        tabs.addTab("Reports & Tuition", tabReports);
+
+        javax.swing.GroupLayout tabProfileLayout = new javax.swing.GroupLayout(tabProfile);
+        tabProfile.setLayout(tabProfileLayout);
+        tabProfileLayout.setHorizontalGroup(
+            tabProfileLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 746, Short.MAX_VALUE)
+        );
+        tabProfileLayout.setVerticalGroup(
+            tabProfileLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 478, Short.MAX_VALUE)
+        );
+
+        tabs.addTab("My Profile", tabProfile);
+
+        add(tabs, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JLabel lblHeader;
+    private javax.swing.JPanel tabCourses;
+    private javax.swing.JPanel tabGrading;
+    private javax.swing.JPanel tabProfile;
+    private javax.swing.JPanel tabReports;
+    private javax.swing.JPanel tabStudents;
+    private javax.swing.JTabbedPane tabs;
     // End of variables declaration//GEN-END:variables
 }
