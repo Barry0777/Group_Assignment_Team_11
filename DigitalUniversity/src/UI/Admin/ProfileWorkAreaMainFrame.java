@@ -28,16 +28,27 @@ public class ProfileWorkAreaMainFrame extends javax.swing.JFrame {
         authService = AuthenticationService.getInstance();
         universityDirectory = UniversityDirectory.getInstance();
 
-            if (authService.getUserByUsername("admin") == null) {
-        // Admin(String universityId, String firstName, String lastName, String email)
-        Admin admin = new Admin("A001", "System", "Admin", "admin@university.edu");
+        if (authService.getUserByUsername("admin") == null) {
+            // Admin(String universityId, String firstName, String lastName, String email)
+            Admin admin = new Admin("A001", "System", "Admin", "admin@university.edu");
 
-        // User(String username, String password, String role, Person person)
-        User adminUser = new User("admin", "****", "Admin", admin);
+            // User(String username, String password, String role, Person person)
+            User adminUser = new User("admin", "****", "Admin", admin);
 
-        authService.registerUser(adminUser);
-        System.out.println("✅ Default admin (admin /****) created.");
-    }
+            authService.registerUser(adminUser);
+
+            System.out.println("✅ Default admin (admin /****) created.");
+        }
+        
+        if (universityDirectory.getStudents().isEmpty()) {
+            DataInitializer dataInitializer = new DataInitializer();
+            dataInitializer.initializeData();
+            System.out.println("✅ System initialized with sample data");
+            System.out.println("📚 Login Credentials:");
+            System.out.println("   Admin: admin / admin123");
+            System.out.println("   Student: student1 / pass1");
+            System.out.println("   Faculty: faculty1 / pass1");
+        }
     }
 
     /**
@@ -153,7 +164,10 @@ public class ProfileWorkAreaMainFrame extends javax.swing.JFrame {
                         // TODO: add FacultyDashboard
                         break;
                     case "student":
-                        // TODO: add StudentDashboard
+                        // ADDED: Student case
+                        StudentDashboard studentPanel = new StudentDashboard(universityDirectory);
+                        jPanel2.add("StudentDashboard", studentPanel);
+                        layout.show(jPanel2, "StudentDashboard");
                         break;
                     default:
                         JOptionPane.showMessageDialog(this, "Unknown role: " + role);

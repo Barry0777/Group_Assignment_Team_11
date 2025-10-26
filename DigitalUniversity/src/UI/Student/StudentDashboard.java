@@ -1,48 +1,89 @@
-/*
- * Student Dashboard - Complete Implementation
- * Author: [Your Name - Student Use Case]
- */
-package UI.Student;
+package UI.Admin;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
+import accesscontrol.*;
+import model.*;
+import business.*;
 import java.util.ArrayList;
 import java.util.HashMap;
-import accesscontrol.*;
-import business.*;
-import model.*;
-import utility.*;
+import java.util.HashSet;
 
 /**
- * StudentDashboard - Main dashboard for student operations
+ * StudentDashboard - Complete student interface with all required functionality
+ * Author: Student Use Case Implementation
  */
-public class StudentDashboard extends JPanel {
+public class StudentDashboard extends javax.swing.JPanel {
     
+    // Services
+    private UniversityDirectory directory;
+    private StudentService studentService;
+    private SearchService searchService;
+    private GradeCalculator gradeCalculator;
+    private AuthenticationService authService;
+    
+    // Current student
+    private Student currentStudent;
+    
+    // UI Components
     private JTabbedPane tabbedPane;
     private JPanel courseRegistrationPanel;
-    private JPanel transcriptPanel;
     private JPanel graduationAuditPanel;
+    private JPanel transcriptPanel;
     private JPanel financialPanel;
     private JPanel courseworkPanel;
     private JPanel profilePanel;
     
-    private StudentService studentService;
-    private SearchService searchService;
-    private UniversityDirectory directory;
-    private AuthenticationService authService;
-    private Student currentStudent;
-    
-    // Tables
-    private JTable courseTable;
+    // Course Registration Components
+    private JTable courseOfferingsTable;
     private DefaultTableModel courseTableModel;
+    private JComboBox<String> searchMethodComboBox;
+    private JTextField searchTextField;
+    private JButton searchButton;
+    private JButton enrollButton;
+    private JButton dropButton;
+    private JButton refreshButton;
+    private JComboBox<Semester> semesterComboBox;
+    
+    // Graduation Audit Components
+    private JLabel totalCreditsLabel;
+    private JLabel requiredCreditsLabel;
+    private JLabel creditsRemainingLabel;
+    private JLabel coreCourseStatusLabel;
+    private JLabel overallGPALabel;
+    private JLabel graduationStatusLabel;
+    private JProgressBar creditProgressBar;
+    
+    // Transcript Components
     private JTable transcriptTable;
     private DefaultTableModel transcriptTableModel;
+    private JComboBox<String> transcriptSemesterComboBox;
+    private JLabel termGPALabel;
+    private JLabel overallGPATranscriptLabel;
+    private JLabel academicStandingLabel;
+    
+    // Financial Components
+    private JLabel currentBalanceLabel;
+    private JButton payTuitionButton;
     private JTable paymentHistoryTable;
-    private DefaultTableModel paymentHistoryTableModel;
-    private JTable assignmentTable;
-    private DefaultTableModel assignmentTableModel;
+    private DefaultTableModel paymentTableModel;
+    private JTextField paymentAmountField;
+    
+    // Coursework Components
+    private JComboBox<CourseOffering> courseworkCourseComboBox;
+    private JTable assignmentsTable;
+    private DefaultTableModel assignmentsTableModel;
+    private JButton submitAssignmentButton;
+    
+    // Profile Components
+    private JTextField profileFirstNameField;
+    private JTextField profileLastNameField;
+    private JTextField profileEmailField;
+    private JTextField profilePhoneField;
+    private JTextField profileAddressField;
+    private JButton saveProfileButton;
     
     /**
      * Constructor
@@ -51,34 +92,45 @@ public class StudentDashboard extends JPanel {
         this.directory = directory;
         this.studentService = new StudentService();
         this.searchService = new SearchService();
+        this.gradeCalculator = new GradeCalculator();
         this.authService = AuthenticationService.getInstance();
-        this.currentStudent = (Student) authService.getCurrentUser().getPerson();
         
+        // Get current logged-in student
+        User currentUser = authService.getCurrentUser();
+        if (currentUser != null && currentUser.getPerson() instanceof Student) {
+            this.currentStudent = (Student) currentUser.getPerson();
+        }
+        
+        initializeUI();
+        loadInitialData();
+    }
+    
+    /**
+     * Initialize the UI
+     */
+    private void initializeUI() {
         setLayout(new BorderLayout());
+        
+        // Create tabbed pane
         tabbedPane = new JTabbedPane();
         
-        // Initialize all tabs
+        // Create all panels
         courseRegistrationPanel = createCourseRegistrationPanel();
-        transcriptPanel = createTranscriptPanel();
         graduationAuditPanel = createGraduationAuditPanel();
+        transcriptPanel = createTranscriptPanel();
         financialPanel = createFinancialPanel();
         courseworkPanel = createCourseworkPanel();
         profilePanel = createProfilePanel();
         
         // Add tabs
         tabbedPane.addTab("Course Registration", courseRegistrationPanel);
-        tabbedPane.addTab("Transcript", transcriptPanel);
         tabbedPane.addTab("Graduation Audit", graduationAuditPanel);
+        tabbedPane.addTab("Transcript Review", transcriptPanel);
         tabbedPane.addTab("Financial Management", financialPanel);
         tabbedPane.addTab("Coursework", courseworkPanel);
         tabbedPane.addTab("Profile", profilePanel);
         
         add(tabbedPane, BorderLayout.CENTER);
-        
-        // Load initial data
-        loadCourseRegistrationData();
-        loadGraduationAuditData();
-        loadFinancialData();
     }
     
     // ========== COURSE REGISTRATION PANEL ==========
@@ -87,434 +139,220 @@ public class StudentDashboard extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
-        // Top Panel - Search Section
-        JPanel searchPanel = new JPanel(new GridLayout(4, 2, 5, 5));
-        searchPanel.setBorder(BorderFactory.createTitledBorder("Search Courses (3 Methods)"));
+        // Title
+        JLabel titleLabel = new JLabel("Course Registration", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
         
-        JLabel lblSearchId = new JLabel("Search by Course ID:");
-        JTextField txtSearchId = new JTextField();
-        JButton btnSearchId = new JButton("Search by ID");
+        // Search panel
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        searchPanel.add(new JLabel("Search Method:"));
         
-        JLabel lblSearchInstructor = new JLabel("Search by Instructor:");
-        JTextField txtSearchInstructor = new JTextField();
-        JButton btnSearchInstructor = new JButton("Search by Instructor");
+        searchMethodComboBox = new JComboBox<>(new String[]{
+            "Course ID", "Instructor Name", "Course Title"
+        });
+        searchPanel.add(searchMethodComboBox);
         
-        JLabel lblSearchTitle = new JLabel("Search by Course Title:");
-        JTextField txtSearchTitle = new JTextField();
-        JButton btnSearchTitle = new JButton("Search by Title");
+        searchPanel.add(new JLabel("Search:"));
+        searchTextField = new JTextField(20);
+        searchPanel.add(searchTextField);
         
-        searchPanel.add(lblSearchId);
-        searchPanel.add(txtSearchId);
-        searchPanel.add(new JLabel());
-        searchPanel.add(btnSearchId);
+        searchButton = new JButton("Search");
+        searchPanel.add(searchButton);
         
-        searchPanel.add(lblSearchInstructor);
-        searchPanel.add(txtSearchInstructor);
-        searchPanel.add(new JLabel());
-        searchPanel.add(btnSearchInstructor);
+        refreshButton = new JButton("Show All");
+        searchPanel.add(refreshButton);
         
-        searchPanel.add(lblSearchTitle);
-        searchPanel.add(txtSearchTitle);
-        searchPanel.add(new JLabel());
-        searchPanel.add(btnSearchTitle);
+        searchPanel.add(new JLabel("Semester:"));
+        semesterComboBox = new JComboBox<>();
+        searchPanel.add(semesterComboBox);
         
-        // Center Panel - Course Table
-        String[] columns = {"Course ID", "Title", "Instructor", "Credits", "Schedule", "Room", "Available Seats", "Status"};
+        // Table
+        String[] columns = {"Course ID", "Title", "Instructor", "Credits", "Schedule", 
+                           "Room", "Enrolled/Capacity", "Status"};
         courseTableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        courseTable = new JTable(courseTableModel);
-        courseTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        JScrollPane scrollPane = new JScrollPane(courseTable);
+        courseOfferingsTable = new JTable(courseTableModel);
+        courseOfferingsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        JScrollPane tableScrollPane = new JScrollPane(courseOfferingsTable);
         
-        // Bottom Panel - Action Buttons
-        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
-        JButton btnEnroll = new JButton("Enroll in Selected Course");
-        JButton btnDrop = new JButton("Drop Selected Course");
-        JButton btnRefresh = new JButton("Refresh / Show All");
-        JLabel lblCredits = new JLabel("Current Semester Credits: 0 / 8");
+        // Button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        enrollButton = new JButton("Enroll in Selected Course");
+        dropButton = new JButton("Drop Selected Course");
         
-        btnEnroll.setBackground(new Color(46, 125, 50));
-        btnEnroll.setForeground(Color.WHITE);
-        btnDrop.setBackground(new Color(211, 47, 47));
-        btnDrop.setForeground(Color.WHITE);
+        enrollButton.setBackground(new Color(46, 125, 50));
+        enrollButton.setForeground(Color.WHITE);
+        dropButton.setBackground(new Color(211, 47, 47));
+        dropButton.setForeground(Color.WHITE);
         
-        actionPanel.add(lblCredits);
-        actionPanel.add(btnEnroll);
-        actionPanel.add(btnDrop);
-        actionPanel.add(btnRefresh);
+        buttonPanel.add(enrollButton);
+        buttonPanel.add(dropButton);
         
-        panel.add(searchPanel, BorderLayout.NORTH);
-        panel.add(scrollPane, BorderLayout.CENTER);
-        panel.add(actionPanel, BorderLayout.SOUTH);
+        // Add action listeners
+        searchButton.addActionListener(e -> performSearch());
+        refreshButton.addActionListener(e -> loadCourseOfferings());
+        enrollButton.addActionListener(e -> enrollInCourse());
+        dropButton.addActionListener(e -> dropCourse());
+        semesterComboBox.addActionListener(e -> loadCourseOfferings());
         
-        // Event Handlers
-        btnSearchId.addActionListener(e -> searchCourseById(txtSearchId.getText().trim()));
-        btnSearchInstructor.addActionListener(e -> searchCourseByInstructor(txtSearchInstructor.getText().trim()));
-        btnSearchTitle.addActionListener(e -> searchCourseByTitle(txtSearchTitle.getText().trim()));
-        btnRefresh.addActionListener(e -> loadCourseRegistrationData());
-        btnEnroll.addActionListener(e -> enrollInCourse());
-        btnDrop.addActionListener(e -> dropCourse());
+        // Layout
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.add(titleLabel, BorderLayout.NORTH);
+        topPanel.add(searchPanel, BorderLayout.CENTER);
         
-        // Update credits label periodically
-        Timer timer = new Timer(1000, e -> {
-            Semester currentSemester = getCurrentSemester();
-            if (currentSemester != null) {
-                int credits = currentStudent.getCurrentSemesterCredits(currentSemester);
-                lblCredits.setText("Current Semester Credits: " + credits + " / 8");
-            }
-        });
-        timer.start();
+        panel.add(topPanel, BorderLayout.NORTH);
+        panel.add(tableScrollPane, BorderLayout.CENTER);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
         
         return panel;
     }
     
-    private void loadCourseRegistrationData() {
-        courseTableModel.setRowCount(0);
-        Semester currentSemester = getCurrentSemester();
-        
-        if (currentSemester == null) {
-            JOptionPane.showMessageDialog(this, "No active semester found.");
+    private void performSearch() {
+        if (semesterComboBox.getSelectedItem() == null) {
+            JOptionPane.showMessageDialog(this, "Please select a semester first.");
             return;
         }
         
-        ArrayList<CourseOffering> offerings = directory.getCourseOfferingsBySemester(currentSemester);
+        Semester selectedSemester = (Semester) semesterComboBox.getSelectedItem();
+        String searchText = searchTextField.getText().trim();
+        String searchMethod = (String) searchMethodComboBox.getSelectedItem();
         
-        for (CourseOffering co : offerings) {
-            String status = isEnrolled(co) ? "Enrolled" : 
-                           (co.isEnrollmentOpen() && co.hasAvailableSeats() ? "Available" : "Closed");
-            
-            courseTableModel.addRow(new Object[]{
-                co.getCourse().getCourseId(),
-                co.getCourse().getTitle(),
-                co.getInstructor().getFullName(),
-                co.getCourse().getCreditHours(),
-                co.getSchedule(),
-                co.getRoomLocation(),
-                co.getAvailableSeats(),
-                status
-            });
+        ArrayList<CourseOffering> results = new ArrayList<>();
+        
+        if (searchText.isEmpty()) {
+            loadCourseOfferings();
+            return;
         }
+        
+        switch (searchMethod) {
+            case "Course ID":
+                results = studentService.searchByCourseId(searchText, selectedSemester);
+                break;
+            case "Instructor Name":
+                results = studentService.searchByInstructor(searchText, selectedSemester);
+                break;
+            case "Course Title":
+                results = studentService.searchByTitle(searchText, selectedSemester);
+                break;
+        }
+        
+        displayCourseOfferings(results);
     }
     
-    private void searchCourseById(String courseId) {
-        if (ValidationUtility.isNullOrEmpty(courseId)) {
-            JOptionPane.showMessageDialog(this, "Please enter a course ID to search.");
-            return;
-        }
+    private void loadCourseOfferings() {
+        if (semesterComboBox.getSelectedItem() == null) return;
         
-        courseTableModel.setRowCount(0);
-        Semester currentSemester = getCurrentSemester();
-        ArrayList<CourseOffering> results = studentService.searchByCourseId(courseId, currentSemester);
-        
-        for (CourseOffering co : results) {
-            String status = isEnrolled(co) ? "Enrolled" : 
-                           (co.isEnrollmentOpen() && co.hasAvailableSeats() ? "Available" : "Closed");
-            
-            courseTableModel.addRow(new Object[]{
-                co.getCourse().getCourseId(),
-                co.getCourse().getTitle(),
-                co.getInstructor().getFullName(),
-                co.getCourse().getCreditHours(),
-                co.getSchedule(),
-                co.getRoomLocation(),
-                co.getAvailableSeats(),
-                status
-            });
-        }
-        
-        if (results.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No courses found with ID: " + courseId);
-        }
+        Semester selectedSemester = (Semester) semesterComboBox.getSelectedItem();
+        ArrayList<CourseOffering> offerings = directory.getCourseOfferingsBySemester(selectedSemester);
+        displayCourseOfferings(offerings);
     }
     
-    private void searchCourseByInstructor(String instructor) {
-        if (ValidationUtility.isNullOrEmpty(instructor)) {
-            JOptionPane.showMessageDialog(this, "Please enter an instructor name to search.");
-            return;
-        }
-        
+    private void displayCourseOfferings(ArrayList<CourseOffering> offerings) {
         courseTableModel.setRowCount(0);
-        Semester currentSemester = getCurrentSemester();
-        ArrayList<CourseOffering> results = studentService.searchByInstructor(instructor, currentSemester);
         
-        for (CourseOffering co : results) {
-            String status = isEnrolled(co) ? "Enrolled" : 
-                           (co.isEnrollmentOpen() && co.hasAvailableSeats() ? "Available" : "Closed");
+        for (CourseOffering offering : offerings) {
+            String status = offering.isEnrollmentOpen() ? "Open" : "Closed";
+            if (!offering.hasAvailableSeats()) {
+                status = "Full";
+            }
+            
+            // Check if student is already enrolled
+            for (Enrollment e : currentStudent.getEnrollments()) {
+                if (e.getCourseOffering().equals(offering) && e.isActive()) {
+                    status = "Enrolled";
+                    break;
+                }
+            }
             
             courseTableModel.addRow(new Object[]{
-                co.getCourse().getCourseId(),
-                co.getCourse().getTitle(),
-                co.getInstructor().getFullName(),
-                co.getCourse().getCreditHours(),
-                co.getSchedule(),
-                co.getRoomLocation(),
-                co.getAvailableSeats(),
+                offering.getCourse().getCourseId(),
+                offering.getCourse().getTitle(),
+                offering.getInstructor().getFullName(),
+                offering.getCourse().getCreditHours(),
+                offering.getSchedule(),
+                offering.getRoomLocation(),
+                offering.getCurrentEnrollment() + "/" + offering.getMaxCapacity(),
                 status
             });
-        }
-        
-        if (results.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No courses found with instructor: " + instructor);
-        }
-    }
-    
-    private void searchCourseByTitle(String title) {
-        if (ValidationUtility.isNullOrEmpty(title)) {
-            JOptionPane.showMessageDialog(this, "Please enter a course title to search.");
-            return;
-        }
-        
-        courseTableModel.setRowCount(0);
-        Semester currentSemester = getCurrentSemester();
-        ArrayList<CourseOffering> results = studentService.searchByTitle(title, currentSemester);
-        
-        for (CourseOffering co : results) {
-            String status = isEnrolled(co) ? "Enrolled" : 
-                           (co.isEnrollmentOpen() && co.hasAvailableSeats() ? "Available" : "Closed");
-            
-            courseTableModel.addRow(new Object[]{
-                co.getCourse().getCourseId(),
-                co.getCourse().getTitle(),
-                co.getInstructor().getFullName(),
-                co.getCourse().getCreditHours(),
-                co.getSchedule(),
-                co.getRoomLocation(),
-                co.getAvailableSeats(),
-                status
-            });
-        }
-        
-        if (results.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No courses found with title: " + title);
         }
     }
     
     private void enrollInCourse() {
-        int selectedRow = courseTable.getSelectedRow();
+        int selectedRow = courseOfferingsTable.getSelectedRow();
         if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "Please select a course to enroll in.");
+            JOptionPane.showMessageDialog(this, "Please select a course to enroll.");
             return;
         }
         
         String courseId = (String) courseTableModel.getValueAt(selectedRow, 0);
-        String status = (String) courseTableModel.getValueAt(selectedRow, 7);
+        Semester selectedSemester = (Semester) semesterComboBox.getSelectedItem();
         
-        if (status.equals("Enrolled")) {
-            JOptionPane.showMessageDialog(this, "You are already enrolled in this course.");
-            return;
+        // Find the course offering
+        CourseOffering selectedOffering = null;
+        for (CourseOffering co : directory.getCourseOfferingsBySemester(selectedSemester)) {
+            if (co.getCourse().getCourseId().equals(courseId)) {
+                selectedOffering = co;
+                break;
+            }
         }
         
-        if (!status.equals("Available")) {
-            JOptionPane.showMessageDialog(this, "This course is not available for enrollment.");
-            return;
-        }
+        if (selectedOffering == null) return;
         
         try {
-            CourseOffering offering = findCourseOfferingById(courseId);
-            if (offering == null) {
-                JOptionPane.showMessageDialog(this, "Course offering not found.");
-                return;
-            }
-            
-            Enrollment enrollment = studentService.enrollInCourse(currentStudent, offering);
+            Enrollment enrollment = studentService.enrollInCourse(currentStudent, selectedOffering);
             JOptionPane.showMessageDialog(this, 
-                "Successfully enrolled in " + courseId + "!\n" +
-                "Tuition charged: $" + String.format("%.2f", enrollment.getTuitionAmount()));
-            
-            loadCourseRegistrationData();
-            loadFinancialData();
-            
+                "Successfully enrolled in " + selectedOffering.getCourse().getTitle() + 
+                "\nTuition added: $" + enrollment.getTuitionAmount());
+            loadCourseOfferings();
+            updateGraduationAudit();
+            updateFinancialInfo();
         } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), 
-                "Enrollment Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Enrollment Error", JOptionPane.ERROR_MESSAGE);
         }
     }
     
     private void dropCourse() {
-        int selectedRow = courseTable.getSelectedRow();
+        int selectedRow = courseOfferingsTable.getSelectedRow();
         if (selectedRow == -1) {
             JOptionPane.showMessageDialog(this, "Please select a course to drop.");
             return;
         }
         
         String courseId = (String) courseTableModel.getValueAt(selectedRow, 0);
-        String status = (String) courseTableModel.getValueAt(selectedRow, 7);
+        Semester selectedSemester = (Semester) semesterComboBox.getSelectedItem();
         
-        if (!status.equals("Enrolled")) {
+        // Find the enrollment
+        Enrollment enrollmentToDrop = null;
+        for (Enrollment e : currentStudent.getEnrollments()) {
+            if (e.getCourseOffering().getCourse().getCourseId().equals(courseId) &&
+                e.getCourseOffering().getSemester().equals(selectedSemester) &&
+                e.isActive()) {
+                enrollmentToDrop = e;
+                break;
+            }
+        }
+        
+        if (enrollmentToDrop == null) {
             JOptionPane.showMessageDialog(this, "You are not enrolled in this course.");
             return;
         }
         
-        int confirm = JOptionPane.showConfirmDialog(this, 
-            "Are you sure you want to drop " + courseId + "?", 
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Are you sure you want to drop " + enrollmentToDrop.getCourseOffering().getCourse().getTitle() + "?",
             "Confirm Drop", JOptionPane.YES_NO_OPTION);
         
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-        
-        try {
-            CourseOffering offering = findCourseOfferingById(courseId);
-            Enrollment enrollment = findEnrollment(offering);
-            
-            if (enrollment == null) {
-                JOptionPane.showMessageDialog(this, "Enrollment not found.");
-                return;
+        if (confirm == JOptionPane.YES_OPTION) {
+            boolean success = studentService.dropCourse(currentStudent, enrollmentToDrop);
+            if (success) {
+                JOptionPane.showMessageDialog(this, "Course dropped successfully.");
+                loadCourseOfferings();
+                updateGraduationAudit();
+                updateFinancialInfo();
             }
-            
-            boolean refunded = enrollment.isPaid();
-            studentService.dropCourse(currentStudent, enrollment);
-            
-            String message = "Successfully dropped " + courseId + ".";
-            if (refunded) {
-                message += "\nRefund of $" + String.format("%.2f", enrollment.getTuitionAmount()) + " applied.";
-            }
-            
-            JOptionPane.showMessageDialog(this, message);
-            loadCourseRegistrationData();
-            loadFinancialData();
-            
-        } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), 
-                "Drop Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-    
-    // ========== TRANSCRIPT PANEL ==========
-    
-    private JPanel createTranscriptPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        
-        // Top Panel - Semester Filter
-        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        JLabel lblSemester = new JLabel("Filter by Semester:");
-        JComboBox<String> cmbSemester = new JComboBox<>();
-        cmbSemester.addItem("All Semesters");
-        for (Semester s : directory.getSemesters()) {
-            cmbSemester.addItem(s.getFullName());
-        }
-        JButton btnViewTranscript = new JButton("View Transcript");
-        
-        topPanel.add(lblSemester);
-        topPanel.add(cmbSemester);
-        topPanel.add(btnViewTranscript);
-        
-        // Center Panel - Transcript Table
-        String[] columns = {"Term", "Course ID", "Course Name", "Credits", "Grade", "Grade Points", "Quality Points"};
-        transcriptTableModel = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-        transcriptTable = new JTable(transcriptTableModel);
-        JScrollPane scrollPane = new JScrollPane(transcriptTable);
-        
-        // Bottom Panel - GPA Information
-        JPanel gpaPanel = new JPanel(new GridLayout(3, 2, 10, 10));
-        gpaPanel.setBorder(BorderFactory.createTitledBorder("GPA Information"));
-        
-        JLabel lblTermGPA = new JLabel("Term GPA:");
-        JLabel lblTermGPAValue = new JLabel("N/A");
-        JLabel lblOverallGPA = new JLabel("Overall GPA:");
-        JLabel lblOverallGPAValue = new JLabel(String.format("%.2f", currentStudent.getOverallGPA()));
-        JLabel lblStanding = new JLabel("Academic Standing:");
-        JLabel lblStandingValue = new JLabel(currentStudent.getAcademicStanding());
-        
-        // Color code standing
-        if (currentStudent.getAcademicStanding().equals("Good Standing")) {
-            lblStandingValue.setForeground(new Color(46, 125, 50));
-        } else if (currentStudent.getAcademicStanding().equals("Academic Warning")) {
-            lblStandingValue.setForeground(new Color(255, 152, 0));
-        } else {
-            lblStandingValue.setForeground(new Color(211, 47, 47));
-        }
-        
-        gpaPanel.add(lblTermGPA);
-        gpaPanel.add(lblTermGPAValue);
-        gpaPanel.add(lblOverallGPA);
-        gpaPanel.add(lblOverallGPAValue);
-        gpaPanel.add(lblStanding);
-        gpaPanel.add(lblStandingValue);
-        
-        panel.add(topPanel, BorderLayout.NORTH);
-        panel.add(scrollPane, BorderLayout.CENTER);
-        panel.add(gpaPanel, BorderLayout.SOUTH);
-        
-        // Event Handler
-        btnViewTranscript.addActionListener(e -> {
-            // Check if tuition is paid
-            if (!studentService.canViewTranscript(currentStudent)) {
-                JOptionPane.showMessageDialog(this, 
-                    "You cannot view your transcript until all tuition is paid.\n" +
-                    "Current Balance: $" + String.format("%.2f", currentStudent.getAccountBalance()) + "\n" +
-                    "Please go to Financial Management to pay tuition.",
-                    "Transcript Access Denied", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            
-            String selectedSemester = (String) cmbSemester.getSelectedItem();
-            loadTranscriptData(selectedSemester, lblTermGPAValue, lblOverallGPAValue, lblStandingValue);
-        });
-        
-        return panel;
-    }
-    
-    private void loadTranscriptData(String semesterName, JLabel termGPALabel, JLabel overallGPALabel, JLabel standingLabel) {
-        transcriptTableModel.setRowCount(0);
-        
-        ArrayList<Enrollment> enrollments;
-        double termGPA = 0.0;
-        
-        if (semesterName.equals("All Semesters")) {
-            enrollments = studentService.getCompleteTranscript(currentStudent);
-        } else {
-            Semester semester = findSemesterByName(semesterName);
-            if (semester != null) {
-                enrollments = studentService.getTranscriptBySemester(currentStudent, semester);
-                termGPA = studentService.calculateTermGPA(currentStudent, semester);
-            } else {
-                return;
-            }
-        }
-        
-        for (Enrollment e : enrollments) {
-            CourseOffering co = e.getCourseOffering();
-            String grade = e.getGrade() != null ? e.getGrade() : "In Progress";
-            
-            transcriptTableModel.addRow(new Object[]{
-                co.getSemester().getFullName(),
-                co.getCourse().getCourseId(),
-                co.getCourse().getTitle(),
-                co.getCourse().getCreditHours(),
-                grade,
-                String.format("%.2f", e.getGradePoints()),
-                String.format("%.2f", e.getQualityPoints())
-            });
-        }
-        
-        // Update GPA labels
-        if (!semesterName.equals("All Semesters")) {
-            termGPALabel.setText(String.format("%.2f", termGPA));
-        } else {
-            termGPALabel.setText("N/A (All Semesters)");
-        }
-        
-        overallGPALabel.setText(String.format("%.2f", currentStudent.getOverallGPA()));
-        standingLabel.setText(currentStudent.getAcademicStanding());
-        
-        // Update standing color
-        if (currentStudent.getAcademicStanding().equals("Good Standing")) {
-            standingLabel.setForeground(new Color(46, 125, 50));
-        } else if (currentStudent.getAcademicStanding().equals("Academic Warning")) {
-            standingLabel.setForeground(new Color(255, 152, 0));
-        } else {
-            standingLabel.setForeground(new Color(211, 47, 47));
         }
     }
     
@@ -524,294 +362,369 @@ public class StudentDashboard extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         
-        JPanel contentPanel = new JPanel(new GridLayout(8, 2, 15, 15));
-        contentPanel.setBorder(BorderFactory.createTitledBorder("MSIS Graduation Requirements"));
+        // Title
+        JLabel titleLabel = new JLabel("Graduation Audit - MSIS Program", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 20));
         
-        JLabel lblTitle = new JLabel("Graduation Audit", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Arial", Font.BOLD, 24));
+        // Info panel
+        JPanel infoPanel = new JPanel(new GridLayout(8, 1, 10, 10));
+        infoPanel.setBorder(BorderFactory.createTitledBorder("Degree Progress"));
         
-        JLabel lblCreditsCompleted = new JLabel("Credits Completed:");
-        JLabel lblCreditsValue = new JLabel("0 / 32");
-        lblCreditsValue.setFont(new Font("Arial", Font.BOLD, 16));
+        totalCreditsLabel = new JLabel("Total Credits Completed: 0");
+        totalCreditsLabel.setFont(new Font("Arial", Font.BOLD, 16));
         
-        JLabel lblCreditsRemaining = new JLabel("Credits Remaining:");
-        JLabel lblCreditsRemainingValue = new JLabel("32");
-        lblCreditsRemainingValue.setFont(new Font("Arial", Font.BOLD, 16));
+        requiredCreditsLabel = new JLabel("Required Credits: 32");
+        requiredCreditsLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         
-        JLabel lblCoreRequired = new JLabel("Core Course (INFO 5100):");
-        JLabel lblCoreStatus = new JLabel("✗ Not Completed");
-        lblCoreStatus.setFont(new Font("Arial", Font.BOLD, 14));
-        lblCoreStatus.setForeground(Color.RED);
+        creditsRemainingLabel = new JLabel("Credits Remaining: 32");
+        creditsRemainingLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         
-        JLabel lblElectives = new JLabel("Elective Courses:");
-        JLabel lblElectivesValue = new JLabel("0 credits");
+        creditProgressBar = new JProgressBar(0, 32);
+        creditProgressBar.setStringPainted(true);
         
-        JLabel lblGPA = new JLabel("Overall GPA:");
-        JLabel lblGPAValue = new JLabel("0.00");
+        coreCourseStatusLabel = new JLabel("Core Course (INFO 5100): Not Completed");
+        coreCourseStatusLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         
-        JLabel lblEligibility = new JLabel("Graduation Eligibility:");
-        JLabel lblEligibilityValue = new JLabel("✗ Not Eligible Yet");
-        lblEligibilityValue.setFont(new Font("Arial", Font.BOLD, 18));
-        lblEligibilityValue.setForeground(Color.RED);
+        overallGPALabel = new JLabel("Overall GPA: 0.00");
+        overallGPALabel.setFont(new Font("Arial", Font.PLAIN, 14));
         
-        JButton btnRefresh = new JButton("Refresh Status");
+        graduationStatusLabel = new JLabel("Graduation Status: Not Eligible");
+        graduationStatusLabel.setFont(new Font("Arial", Font.BOLD, 18));
         
-        contentPanel.add(lblCreditsCompleted);
-        contentPanel.add(lblCreditsValue);
-        contentPanel.add(lblCreditsRemaining);
-        contentPanel.add(lblCreditsRemainingValue);
-        contentPanel.add(lblCoreRequired);
-        contentPanel.add(lblCoreStatus);
-        contentPanel.add(lblElectives);
-        contentPanel.add(lblElectivesValue);
-        contentPanel.add(lblGPA);
-        contentPanel.add(lblGPAValue);
-        contentPanel.add(lblEligibility);
-        contentPanel.add(lblEligibilityValue);
-        contentPanel.add(new JLabel());
-        contentPanel.add(btnRefresh);
+        JButton refreshButton = new JButton("Refresh Status");
+        refreshButton.addActionListener(e -> updateGraduationAudit());
         
-        panel.add(lblTitle, BorderLayout.NORTH);
-        panel.add(contentPanel, BorderLayout.CENTER);
+        infoPanel.add(totalCreditsLabel);
+        infoPanel.add(requiredCreditsLabel);
+        infoPanel.add(creditsRemainingLabel);
+        infoPanel.add(creditProgressBar);
+        infoPanel.add(coreCourseStatusLabel);
+        infoPanel.add(overallGPALabel);
+        infoPanel.add(graduationStatusLabel);
+        infoPanel.add(refreshButton);
         
-        // Store labels for updates
-        JLabel[] labels = {lblCreditsValue, lblCreditsRemainingValue, lblCoreStatus, 
-                          lblElectivesValue, lblGPAValue, lblEligibilityValue};
-        
-        btnRefresh.addActionListener(e -> updateGraduationAudit(labels));
+        panel.add(titleLabel, BorderLayout.NORTH);
+        panel.add(infoPanel, BorderLayout.CENTER);
         
         return panel;
     }
     
-    private void loadGraduationAuditData() {
-        // Will be updated when tab is opened or refresh is clicked
-    }
-    
-    private void updateGraduationAudit(JLabel[] labels) {
+    private void updateGraduationAudit() {
+        // Update credits completed
         studentService.updateCreditsCompleted(currentStudent);
+        
         HashMap<String, Object> status = studentService.getGraduationStatus(currentStudent);
         
         int totalCredits = (int) status.get("totalCredits");
         int requiredCredits = (int) status.get("requiredCredits");
-        int remaining = (int) status.get("creditsRemaining");
-        boolean hasCore = (boolean) status.get("hasCoreCourse");
-        boolean eligible = (boolean) status.get("isEligible");
+        int creditsRemaining = (int) status.get("creditsRemaining");
+        boolean hasCoreCourse = (boolean) status.get("hasCoreCourse");
+        boolean isEligible = (boolean) status.get("isEligible");
         double gpa = (double) status.get("overallGPA");
         
-        int electiveCredits = hasCore ? totalCredits - 4 : totalCredits;
+        totalCreditsLabel.setText("Total Credits Completed: " + totalCredits);
+        creditsRemainingLabel.setText("Credits Remaining: " + creditsRemaining);
+        creditProgressBar.setValue(totalCredits);
+        creditProgressBar.setString(totalCredits + " / " + requiredCredits);
         
-        labels[0].setText(totalCredits + " / " + requiredCredits);
-        labels[1].setText(String.valueOf(remaining));
-        
-        if (hasCore) {
-            labels[2].setText("✓ Completed");
-            labels[2].setForeground(new Color(46, 125, 50));
+        if (hasCoreCourse) {
+            coreCourseStatusLabel.setText("Core Course (INFO 5100): ✓ Completed");
+            coreCourseStatusLabel.setForeground(new Color(46, 125, 50));
         } else {
-            labels[2].setText("✗ Not Completed");
-            labels[2].setForeground(Color.RED);
+            coreCourseStatusLabel.setText("Core Course (INFO 5100): ✗ Not Completed");
+            coreCourseStatusLabel.setForeground(new Color(211, 47, 47));
         }
         
-        labels[3].setText(electiveCredits + " credits");
-        labels[4].setText(String.format("%.2f", gpa));
+        overallGPALabel.setText(String.format("Overall GPA: %.2f", gpa));
         
-        if (eligible) {
-            labels[5].setText("✓ ELIGIBLE TO GRADUATE");
-            labels[5].setForeground(new Color(46, 125, 50));
+        if (isEligible) {
+            graduationStatusLabel.setText("🎓 Graduation Status: READY TO GRADUATE!");
+            graduationStatusLabel.setForeground(new Color(46, 125, 50));
         } else {
-            labels[5].setText("✗ Not Eligible Yet");
-            labels[5].setForeground(Color.RED);
+            graduationStatusLabel.setText("Graduation Status: Not Eligible Yet");
+            graduationStatusLabel.setForeground(new Color(211, 47, 47));
         }
     }
     
-    // ========== FINANCIAL MANAGEMENT PANEL ==========
+    // ========== TRANSCRIPT PANEL ==========
     
-    private JPanel createFinancialPanel() {
+    private JPanel createTranscriptPanel() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
-        // Top Panel - Balance and Payment
-        JPanel topPanel = new JPanel(new GridLayout(4, 2, 10, 10));
-        topPanel.setBorder(BorderFactory.createTitledBorder("Tuition Payment"));
+        // Title and filter
+        JPanel topPanel = new JPanel(new BorderLayout());
+        JLabel titleLabel = new JLabel("Academic Transcript", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
         
-        JLabel lblBalance = new JLabel("Current Balance:");
-        JLabel lblBalanceValue = new JLabel("$0.00");
-        lblBalanceValue.setFont(new Font("Arial", Font.BOLD, 16));
-        lblBalanceValue.setForeground(Color.RED);
+        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        filterPanel.add(new JLabel("Filter by Semester:"));
+        transcriptSemesterComboBox = new JComboBox<>();
+        transcriptSemesterComboBox.addItem("All Semesters");
+        transcriptSemesterComboBox.addActionListener(e -> loadTranscript());
+        filterPanel.add(transcriptSemesterComboBox);
         
-        JLabel lblPaymentAmount = new JLabel("Payment Amount:");
-        JTextField txtPaymentAmount = new JTextField();
+        topPanel.add(titleLabel, BorderLayout.NORTH);
+        topPanel.add(filterPanel, BorderLayout.CENTER);
         
-        JButton btnPayFull = new JButton("Pay Full Balance");
-        JButton btnPayCustom = new JButton("Pay Custom Amount");
-        
-        btnPayFull.setBackground(new Color(46, 125, 50));
-        btnPayFull.setForeground(Color.WHITE);
-        btnPayCustom.setBackground(new Color(33, 150, 243));
-        btnPayCustom.setForeground(Color.WHITE);
-        
-        topPanel.add(lblBalance);
-        topPanel.add(lblBalanceValue);
-        topPanel.add(lblPaymentAmount);
-        topPanel.add(txtPaymentAmount);
-        topPanel.add(new JLabel());
-        topPanel.add(btnPayFull);
-        topPanel.add(new JLabel());
-        topPanel.add(btnPayCustom);
-        
-        // Center Panel - Payment History
-        JPanel centerPanel = new JPanel(new BorderLayout());
-        centerPanel.setBorder(BorderFactory.createTitledBorder("Payment History"));
-        
-        String[] columns = {"Payment ID", "Date", "Amount", "Balance After", "Description"};
-        paymentHistoryTableModel = new DefaultTableModel(columns, 0) {
+        // Table
+        String[] columns = {"Term", "Academic Standing", "Course ID", "Course Name", 
+                           "Grade", "Credits", "Grade Points", "Quality Points"};
+        transcriptTableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        paymentHistoryTable = new JTable(paymentHistoryTableModel);
-        JScrollPane scrollPane = new JScrollPane(paymentHistoryTable);
+        transcriptTable = new JTable(transcriptTableModel);
+        JScrollPane tableScrollPane = new JScrollPane(transcriptTable);
         
-        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        // GPA Info Panel
+        JPanel gpaPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 10));
+        gpaPanel.setBorder(BorderFactory.createTitledBorder("GPA Information"));
+        
+        termGPALabel = new JLabel("Term GPA: N/A");
+        termGPALabel.setFont(new Font("Arial", Font.BOLD, 14));
+        
+        overallGPATranscriptLabel = new JLabel("Overall GPA: 0.00");
+        overallGPATranscriptLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        
+        academicStandingLabel = new JLabel("Academic Standing: Good Standing");
+        academicStandingLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        
+        gpaPanel.add(termGPALabel);
+        gpaPanel.add(overallGPATranscriptLabel);
+        gpaPanel.add(academicStandingLabel);
         
         panel.add(topPanel, BorderLayout.NORTH);
-        panel.add(centerPanel, BorderLayout.CENTER);
-        
-        // Event Handlers
-        btnPayFull.addActionListener(e -> payFullBalance(lblBalanceValue, txtPaymentAmount));
-        btnPayCustom.addActionListener(e -> payCustomAmount(txtPaymentAmount.getText(), lblBalanceValue, txtPaymentAmount));
+        panel.add(tableScrollPane, BorderLayout.CENTER);
+        panel.add(gpaPanel, BorderLayout.SOUTH);
         
         return panel;
     }
     
-    private void loadFinancialData() {
-        // Update balance display
-        Component[] components = financialPanel.getComponents();
-        for (Component comp : components) {
-            if (comp instanceof JPanel) {
-                JPanel topPanel = (JPanel) comp;
-                Component[] topComponents = topPanel.getComponents();
-                for (Component c : topComponents) {
-                    if (c instanceof JLabel) {
-                        JLabel label = (JLabel) c;
-                        if (label.getText().startsWith("$")) {
-                            double balance = currentStudent.getAccountBalance();
-                            label.setText("$" + String.format("%.2f", balance));
-                            if (balance > 0) {
-                                label.setForeground(Color.RED);
-                            } else {
-                                label.setForeground(new Color(46, 125, 50));
-                            }
-                            break;
-                        }
-                    }
+    private void loadTranscript() {
+        // Check if tuition is paid
+        if (!studentService.canViewTranscript(currentStudent)) {
+            transcriptTableModel.setRowCount(0);
+            JOptionPane.showMessageDialog(this, 
+                "You must pay your tuition balance before viewing your transcript.\n" +
+                "Current balance: $" + String.format("%.2f", currentStudent.getAccountBalance()),
+                "Transcript Locked", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        transcriptTableModel.setRowCount(0);
+        
+        String selectedItem = (String) transcriptSemesterComboBox.getSelectedItem();
+        ArrayList<Enrollment> enrollments;
+        
+        if ("All Semesters".equals(selectedItem)) {
+            enrollments = studentService.getCompleteTranscript(currentStudent);
+        } else {
+            // Find semester
+            Semester selectedSemester = null;
+            for (Semester sem : directory.getSemesters()) {
+                if (sem.getFullName().equals(selectedItem)) {
+                    selectedSemester = sem;
+                    break;
                 }
-                break;
+            }
+            if (selectedSemester != null) {
+                enrollments = studentService.getTranscriptBySemester(currentStudent, selectedSemester);
+            } else {
+                enrollments = new ArrayList<>();
             }
         }
         
+        // Display enrollments
+        Semester currentSemester = null;
+        double termGPA = 0.0;
+        
+        for (Enrollment e : enrollments) {
+            if (e.getGrade() == null) continue; // Skip courses without grades
+            
+            Semester sem = e.getCourseOffering().getSemester();
+            
+            // Calculate term GPA for this semester
+            if (currentSemester == null || !currentSemester.equals(sem)) {
+                currentSemester = sem;
+                termGPA = GradeCalculator.calculateTermGPA(currentStudent, sem);
+            }
+            
+            // Determine academic standing
+            double overallGPA = currentStudent.getOverallGPA();
+            String standing = GradeCalculator.determineAcademicStanding(termGPA, overallGPA);
+            
+            transcriptTableModel.addRow(new Object[]{
+                sem.getFullName(),
+                standing,
+                e.getCourseOffering().getCourse().getCourseId(),
+                e.getCourseOffering().getCourse().getTitle(),
+                e.getGrade(),
+                e.getCourseOffering().getCourse().getCreditHours(),
+                String.format("%.2f", e.getGradePoints()),
+                String.format("%.2f", e.getQualityPoints())
+            });
+        }
+        
+        // Update GPA labels
+        if (!selectedItem.equals("All Semesters") && currentSemester != null) {
+            termGPALabel.setText(String.format("Term GPA: %.2f", termGPA));
+        } else {
+            termGPALabel.setText("Term GPA: Select a semester");
+        }
+        
+        overallGPATranscriptLabel.setText(String.format("Overall GPA: %.2f", currentStudent.getOverallGPA()));
+        academicStandingLabel.setText("Academic Standing: " + currentStudent.getAcademicStanding());
+        
+        // Color code academic standing
+        if (currentStudent.getAcademicStanding().equals("Good Standing")) {
+            academicStandingLabel.setForeground(new Color(46, 125, 50));
+        } else if (currentStudent.getAcademicStanding().equals("Academic Warning")) {
+            academicStandingLabel.setForeground(new Color(255, 152, 0));
+        } else {
+            academicStandingLabel.setForeground(new Color(211, 47, 47));
+        }
+    }
+    
+    // ========== FINANCIAL PANEL ==========
+    
+    private JPanel createFinancialPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        // Title
+        JLabel titleLabel = new JLabel("Financial Management", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        
+        // Balance panel
+        JPanel balancePanel = new JPanel(new GridLayout(3, 1, 5, 5));
+        balancePanel.setBorder(BorderFactory.createTitledBorder("Current Balance"));
+        
+        currentBalanceLabel = new JLabel("Current Balance: $0.00");
+        currentBalanceLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        
+        JPanel paymentPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        paymentPanel.add(new JLabel("Payment Amount: $"));
+        paymentAmountField = new JTextField(10);
+        paymentPanel.add(paymentAmountField);
+        
+        payTuitionButton = new JButton("Pay Tuition");
+        payTuitionButton.setBackground(new Color(46, 125, 50));
+        payTuitionButton.setForeground(Color.WHITE);
+        paymentPanel.add(payTuitionButton);
+        
+        balancePanel.add(currentBalanceLabel);
+        balancePanel.add(paymentPanel);
+        
+        // Payment history table
+        JPanel historyPanel = new JPanel(new BorderLayout());
+        historyPanel.setBorder(BorderFactory.createTitledBorder("Payment History"));
+        
+        String[] columns = {"Payment ID", "Date", "Amount", "Semester", "Description"};
+        paymentTableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        paymentHistoryTable = new JTable(paymentTableModel);
+        JScrollPane historyScrollPane = new JScrollPane(paymentHistoryTable);
+        
+        historyPanel.add(historyScrollPane, BorderLayout.CENTER);
+        
+        // Action listener
+        payTuitionButton.addActionListener(e -> processTuitionPayment());
+        
+        // Layout
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.add(titleLabel, BorderLayout.NORTH);
+        topPanel.add(balancePanel, BorderLayout.CENTER);
+        
+        panel.add(topPanel, BorderLayout.NORTH);
+        panel.add(historyPanel, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    private void updateFinancialInfo() {
+        double balance = currentStudent.getAccountBalance();
+        currentBalanceLabel.setText(String.format("Current Balance: $%.2f", balance));
+        
+        if (balance > 0) {
+            currentBalanceLabel.setForeground(new Color(211, 47, 47));
+        } else {
+            currentBalanceLabel.setForeground(new Color(46, 125, 50));
+        }
+        
         // Load payment history
-        paymentHistoryTableModel.setRowCount(0);
+        paymentTableModel.setRowCount(0);
         ArrayList<TuitionPayment> payments = studentService.getPaymentHistory(currentStudent);
         
         for (TuitionPayment payment : payments) {
-            paymentHistoryTableModel.addRow(new Object[]{
+            paymentTableModel.addRow(new Object[]{
                 payment.getPaymentId(),
                 payment.getPaymentDate().toString(),
-                "$" + String.format("%.2f", payment.getAmount()),
-                "$" + String.format("%.2f", currentStudent.getAccountBalance()),
+                String.format("$%.2f", payment.getAmount()),
+                payment.getSemester(),
                 payment.getDescription()
             });
         }
     }
     
-    private void payFullBalance(JLabel balanceLabel, JTextField amountField) {
-        double balance = currentStudent.getAccountBalance();
-        
-        if (balance <= 0) {
+    private void processTuitionPayment() {
+        // Check if there's a balance
+        if (currentStudent.getAccountBalance() <= 0) {
             JOptionPane.showMessageDialog(this, 
                 "No balance to pay. Your account is current.",
-                "No Payment Needed", JOptionPane.INFORMATION_MESSAGE);
+                "No Balance", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         
-        int confirm = JOptionPane.showConfirmDialog(this, 
-            "Pay full balance of $" + String.format("%.2f", balance) + "?",
-            "Confirm Payment", JOptionPane.YES_NO_OPTION);
+        String amountText = paymentAmountField.getText().trim();
         
-        if (confirm != JOptionPane.YES_OPTION) {
+        if (amountText.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "Please enter a payment amount.",
+                "Invalid Input", JOptionPane.ERROR_MESSAGE);
             return;
         }
         
         try {
-            TuitionPayment payment = studentService.payTuition(currentStudent, balance);
-            JOptionPane.showMessageDialog(this, 
-                "Payment successful!\n" +
-                "Amount Paid: $" + String.format("%.2f", balance) + "\n" +
-                "New Balance: $" + String.format("%.2f", currentStudent.getAccountBalance()));
+            double amount = Double.parseDouble(amountText);
             
-            balanceLabel.setText("$" + String.format("%.2f", currentStudent.getAccountBalance()));
-            balanceLabel.setForeground(new Color(46, 125, 50));
-            amountField.setText("");
-            loadFinancialData();
-            
-        } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), 
-                "Payment Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-    
-    private void payCustomAmount(String amountStr, JLabel balanceLabel, JTextField amountField) {
-        if (ValidationUtility.isNullOrEmpty(amountStr)) {
-            JOptionPane.showMessageDialog(this, "Please enter a payment amount.");
-            return;
-        }
-        
-        if (!ValidationUtility.isPositiveDouble(amountStr)) {
-            JOptionPane.showMessageDialog(this, "Please enter a valid positive amount.");
-            return;
-        }
-        
-        double amount = Double.parseDouble(amountStr);
-        double balance = currentStudent.getAccountBalance();
-        
-        if (balance <= 0) {
-            JOptionPane.showMessageDialog(this, 
-                "No balance to pay. Your account is current.",
-                "No Payment Needed", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        
-        if (amount > balance) {
-            int confirm = JOptionPane.showConfirmDialog(this, 
-                "Payment amount ($" + String.format("%.2f", amount) + ") exceeds balance ($" + 
-                String.format("%.2f", balance) + ").\n" +
-                "Do you want to pay the full balance instead?",
-                "Amount Exceeds Balance", JOptionPane.YES_NO_OPTION);
-            
-            if (confirm == JOptionPane.YES_OPTION) {
-                amount = balance;
-            } else {
+            if (amount <= 0) {
+                JOptionPane.showMessageDialog(this, 
+                    "Payment amount must be greater than 0.",
+                    "Invalid Amount", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-        }
-        
-        try {
+            
+            if (amount > currentStudent.getAccountBalance()) {
+                amount = currentStudent.getAccountBalance();
+                JOptionPane.showMessageDialog(this, 
+                    "Payment amount exceeds balance. Paying full balance: $" + String.format("%.2f", amount));
+            }
+            
             TuitionPayment payment = studentService.payTuition(currentStudent, amount);
+            
             JOptionPane.showMessageDialog(this, 
                 "Payment successful!\n" +
-                "Amount Paid: $" + String.format("%.2f", amount) + "\n" +
-                "New Balance: $" + String.format("%.2f", currentStudent.getAccountBalance()));
+                "Amount paid: $" + String.format("%.2f", amount) + "\n" +
+                "Remaining balance: $" + String.format("%.2f", currentStudent.getAccountBalance()),
+                "Payment Successful", JOptionPane.INFORMATION_MESSAGE);
             
-            balanceLabel.setText("$" + String.format("%.2f", currentStudent.getAccountBalance()));
-            if (currentStudent.getAccountBalance() <= 0) {
-                balanceLabel.setForeground(new Color(46, 125, 50));
-            }
-            amountField.setText("");
-            loadFinancialData();
+            paymentAmountField.setText("");
+            updateFinancialInfo();
             
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, 
+                "Invalid amount format. Please enter a valid number.",
+                "Invalid Input", JOptionPane.ERROR_MESSAGE);
         } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), 
+            JOptionPane.showMessageDialog(this, 
+                ex.getMessage(),
                 "Payment Error", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -822,258 +735,215 @@ public class StudentDashboard extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
-        // Top Panel - Course Selection
-        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JLabel lblCourse = new JLabel("Select Course:");
-        JComboBox<String> cmbCourse = new JComboBox<>();
-        JButton btnLoadAssignments = new JButton("Load Assignments");
+        // Title
+        JLabel titleLabel = new JLabel("Coursework Management", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
         
-        topPanel.add(lblCourse);
-        topPanel.add(cmbCourse);
-        topPanel.add(btnLoadAssignments);
+        // Course selection
+        JPanel selectionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        selectionPanel.add(new JLabel("Select Course:"));
+        courseworkCourseComboBox = new JComboBox<>();
+        courseworkCourseComboBox.addActionListener(e -> loadAssignments());
+        selectionPanel.add(courseworkCourseComboBox);
         
-        // Populate courses
-        for (Enrollment e : currentStudent.getEnrollments()) {
-            if (e.isActive()) {
-                cmbCourse.addItem(e.getCourseOffering().getCourse().getCourseId() + " - " + 
-                                 e.getCourseOffering().getCourse().getTitle());
-            }
-        }
-        
-        // Center Panel - Assignments Table
-        String[] columns = {"Assignment", "Due Date", "Max Points", "Your Score", "Percentage", "Status"};
-        assignmentTableModel = new DefaultTableModel(columns, 0) {
+        // Assignments table
+        String[] columns = {"Assignment", "Description", "Max Points", "Your Score", "Status", "Due Date"};
+        assignmentsTableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        assignmentTable = new JTable(assignmentTableModel);
-        JScrollPane scrollPane = new JScrollPane(assignmentTable);
+        assignmentsTable = new JTable(assignmentsTableModel);
+        JScrollPane tableScrollPane = new JScrollPane(assignmentsTable);
         
-        // Bottom Panel - Progress Summary
-        JPanel bottomPanel = new JPanel(new GridLayout(3, 2, 10, 10));
-        bottomPanel.setBorder(BorderFactory.createTitledBorder("Course Progress"));
+        // Buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        submitAssignmentButton = new JButton("Mark as Submitted");
+        submitAssignmentButton.addActionListener(e -> submitAssignment());
+        buttonPanel.add(submitAssignmentButton);
         
-        JLabel lblCompleted = new JLabel("Assignments Completed:");
-        JLabel lblCompletedValue = new JLabel("0 / 0");
-        JLabel lblCurrentGrade = new JLabel("Current Grade:");
-        JLabel lblCurrentGradeValue = new JLabel("N/A");
-        JLabel lblPercentage = new JLabel("Overall Percentage:");
-        JLabel lblPercentageValue = new JLabel("0.00%");
-        
-        bottomPanel.add(lblCompleted);
-        bottomPanel.add(lblCompletedValue);
-        bottomPanel.add(lblCurrentGrade);
-        bottomPanel.add(lblCurrentGradeValue);
-        bottomPanel.add(lblPercentage);
-        bottomPanel.add(lblPercentageValue);
+        // Layout
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.add(titleLabel, BorderLayout.NORTH);
+        topPanel.add(selectionPanel, BorderLayout.CENTER);
         
         panel.add(topPanel, BorderLayout.NORTH);
-        panel.add(scrollPane, BorderLayout.CENTER);
-        panel.add(bottomPanel, BorderLayout.SOUTH);
-        
-        // Event Handler
-        btnLoadAssignments.addActionListener(e -> {
-            String selected = (String) cmbCourse.getSelectedItem();
-            if (selected != null) {
-                String courseId = selected.split(" - ")[0];
-                loadAssignmentsForCourse(courseId, lblCompletedValue, lblCurrentGradeValue, lblPercentageValue);
-            }
-        });
+        panel.add(tableScrollPane, BorderLayout.CENTER);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
         
         return panel;
     }
     
-    private void loadAssignmentsForCourse(String courseId, JLabel completedLabel, 
-                                         JLabel gradeLabel, JLabel percentageLabel) {
-        assignmentTableModel.setRowCount(0);
+    private void loadAssignments() {
+        assignmentsTableModel.setRowCount(0);
         
-        CourseOffering offering = findCourseOfferingById(courseId);
-        if (offering == null) {
-            return;
-        }
+        CourseOffering selected = (CourseOffering) courseworkCourseComboBox.getSelectedItem();
+        if (selected == null) return;
         
-        ArrayList<Assignment> assignments = studentService.getCourseAssignments(currentStudent, offering);
-        int completed = 0;
+        ArrayList<Assignment> assignments = studentService.getCourseAssignments(currentStudent, selected);
         
         for (Assignment assignment : assignments) {
             Double score = studentService.getAssignmentScore(currentStudent, assignment);
-            String scoreStr = score != null ? String.format("%.2f", score) : "Not Graded";
-            String percentage = score != null ? String.format("%.2f%%", (score / assignment.getMaxPoints()) * 100) : "N/A";
-            String status = score != null && score > 0 ? "Completed" : "Pending";
+            String status = score != null ? "Submitted" : "Not Submitted";
+            String scoreStr = score != null ? String.format("%.2f", score) : "N/A";
             
-            if (score != null && score > 0) {
-                completed++;
-            }
-            
-            assignmentTableModel.addRow(new Object[]{
+            assignmentsTableModel.addRow(new Object[]{
                 assignment.getTitle(),
-                assignment.getDueDate() != null ? assignment.getDueDate().toString() : "No due date",
+                assignment.getDescription(),
                 assignment.getMaxPoints(),
                 scoreStr,
-                percentage,
-                status
+                status,
+                assignment.getDueDate() != null ? assignment.getDueDate().toString() : "N/A"
             });
         }
-        
-        // Update progress
-        completedLabel.setText(completed + " / " + assignments.size());
-        
-        // Get current grade
-        Enrollment enrollment = findEnrollment(offering);
-        if (enrollment != null && enrollment.getGrade() != null) {
-            gradeLabel.setText(enrollment.getGrade());
-        } else {
-            gradeLabel.setText("In Progress");
+    }
+    
+    private void submitAssignment() {
+        int selectedRow = assignmentsTable.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Please select an assignment to submit.");
+            return;
         }
         
-        // Calculate percentage
-        double totalPercentage = GradeCalculator.calculateCoursePercentage(currentStudent, offering);
-        percentageLabel.setText(String.format("%.2f%%", totalPercentage));
+        CourseOffering selected = (CourseOffering) courseworkCourseComboBox.getSelectedItem();
+        if (selected == null) return;
+        
+        String assignmentTitle = (String) assignmentsTableModel.getValueAt(selectedRow, 0);
+        
+        // Find the assignment
+        Assignment assignment = null;
+        for (Assignment a : selected.getAssignments()) {
+            if (a.getTitle().equals(assignmentTitle)) {
+                assignment = a;
+                break;
+            }
+        }
+        
+        if (assignment != null) {
+            boolean success = studentService.submitAssignment(currentStudent, assignment);
+            if (success) {
+                JOptionPane.showMessageDialog(this, "Assignment submitted successfully!");
+                loadAssignments();
+            } else {
+                JOptionPane.showMessageDialog(this, "Assignment already submitted.");
+            }
+        }
     }
     
     // ========== PROFILE PANEL ==========
     
     private JPanel createProfilePanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
         
-        JLabel lblTitle = new JLabel("My Profile", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Arial", Font.BOLD, 24));
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridwidth = 2;
-        panel.add(lblTitle, gbc);
+        // Title
+        JLabel titleLabel = new JLabel("Profile Management", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
         
-        gbc.gridwidth = 1;
-        gbc.gridy = 1;
+        // Form panel
+        JPanel formPanel = new JPanel(new GridLayout(6, 2, 10, 10));
+        formPanel.setBorder(BorderFactory.createTitledBorder("Personal Information"));
         
-        // Profile fields
-        JLabel lblId = new JLabel("University ID:");
-        JLabel lblIdValue = new JLabel(currentStudent.getUniversityId());
-        gbc.gridx = 0;
-        panel.add(lblId, gbc);
-        gbc.gridx = 1;
-        panel.add(lblIdValue, gbc);
+        formPanel.add(new JLabel("First Name:"));
+        profileFirstNameField = new JTextField();
+        formPanel.add(profileFirstNameField);
         
-        gbc.gridy = 2;
-        JLabel lblName = new JLabel("Name:");
-        JLabel lblNameValue = new JLabel(currentStudent.getFullName());
-        gbc.gridx = 0;
-        panel.add(lblName, gbc);
-        gbc.gridx = 1;
-        panel.add(lblNameValue, gbc);
+        formPanel.add(new JLabel("Last Name:"));
+        profileLastNameField = new JTextField();
+        formPanel.add(profileLastNameField);
         
-        gbc.gridy = 3;
-        JLabel lblEmail = new JLabel("Email:");
-        JTextField txtEmail = new JTextField(currentStudent.getEmail(), 20);
-        gbc.gridx = 0;
-        panel.add(lblEmail, gbc);
-        gbc.gridx = 1;
-        panel.add(txtEmail, gbc);
+        formPanel.add(new JLabel("Email:"));
+        profileEmailField = new JTextField();
+        formPanel.add(profileEmailField);
         
-        gbc.gridy = 4;
-        JLabel lblPhone = new JLabel("Phone:");
-        JTextField txtPhone = new JTextField(currentStudent.getPhoneNumber(), 20);
-        gbc.gridx = 0;
-        panel.add(lblPhone, gbc);
-        gbc.gridx = 1;
-        panel.add(txtPhone, gbc);
+        formPanel.add(new JLabel("Phone:"));
+        profilePhoneField = new JTextField();
+        formPanel.add(profilePhoneField);
         
-        gbc.gridy = 5;
-        JLabel lblAddress = new JLabel("Address:");
-        JTextField txtAddress = new JTextField(currentStudent.getAddress(), 20);
-        gbc.gridx = 0;
-        panel.add(lblAddress, gbc);
-        gbc.gridx = 1;
-        panel.add(txtAddress, gbc);
+        formPanel.add(new JLabel("Address:"));
+        profileAddressField = new JTextField();
+        formPanel.add(profileAddressField);
         
-        gbc.gridy = 6;
-        JLabel lblProgram = new JLabel("Program:");
-        JLabel lblProgramValue = new JLabel(currentStudent.getProgram());
-        gbc.gridx = 0;
-        panel.add(lblProgram, gbc);
-        gbc.gridx = 1;
-        panel.add(lblProgramValue, gbc);
+        formPanel.add(new JLabel("")); // Spacer
+        saveProfileButton = new JButton("Save Changes");
+        saveProfileButton.setBackground(new Color(33, 150, 243));
+        saveProfileButton.setForeground(Color.WHITE);
+        saveProfileButton.addActionListener(e -> saveProfile());
+        formPanel.add(saveProfileButton);
         
-        gbc.gridy = 7;
-        JButton btnSave = new JButton("Save Changes");
-        btnSave.setBackground(new Color(33, 150, 243));
-        btnSave.setForeground(Color.WHITE);
-        gbc.gridx = 0;
-        gbc.gridwidth = 2;
-        panel.add(btnSave, gbc);
-        
-        // Event Handler
-        btnSave.addActionListener(e -> {
-            String email = txtEmail.getText().trim();
-            String phone = txtPhone.getText().trim();
-            String address = txtAddress.getText().trim();
-            
-            // Validation
-            if (!ValidationUtility.isValidEmail(email)) {
-                JOptionPane.showMessageDialog(this, "Please enter a valid email address.");
-                return;
-            }
-            
-            currentStudent.setEmail(email);
-            currentStudent.setPhoneNumber(phone);
-            currentStudent.setAddress(address);
-            
-            JOptionPane.showMessageDialog(this, "Profile updated successfully!");
-        });
+        panel.add(titleLabel, BorderLayout.NORTH);
+        panel.add(formPanel, BorderLayout.CENTER);
         
         return panel;
     }
     
-    // ========== HELPER METHODS ==========
-    
-    private Semester getCurrentSemester() {
-        ArrayList<Semester> semesters = directory.getSemesters();
-        if (!semesters.isEmpty()) {
-            return semesters.get(0); // Return first semester (Fall 2025)
+    private void loadProfileData() {
+        if (currentStudent != null) {
+            profileFirstNameField.setText(currentStudent.getFirstName());
+            profileLastNameField.setText(currentStudent.getLastName());
+            profileEmailField.setText(currentStudent.getEmail());
+            profilePhoneField.setText(currentStudent.getPhoneNumber() != null ? currentStudent.getPhoneNumber() : "");
+            profileAddressField.setText(currentStudent.getAddress() != null ? currentStudent.getAddress() : "");
         }
-        return null;
     }
     
-    private CourseOffering findCourseOfferingById(String courseId) {
-        Semester currentSemester = getCurrentSemester();
-        for (CourseOffering co : directory.getCourseOfferingsBySemester(currentSemester)) {
-            if (co.getCourse().getCourseId().equals(courseId)) {
-                return co;
-            }
+    private void saveProfile() {
+        if (currentStudent == null) return;
+        
+        String firstName = profileFirstNameField.getText().trim();
+        String lastName = profileLastNameField.getText().trim();
+        String email = profileEmailField.getText().trim();
+        String phone = profilePhoneField.getText().trim();
+        String address = profileAddressField.getText().trim();
+        
+        if (firstName.isEmpty() || lastName.isEmpty() || email.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "First name, last name, and email are required.",
+                "Invalid Input", JOptionPane.ERROR_MESSAGE);
+            return;
         }
-        return null;
+        
+        currentStudent.setFirstName(firstName);
+        currentStudent.setLastName(lastName);
+        currentStudent.setEmail(email);
+        currentStudent.setPhoneNumber(phone);
+        currentStudent.setAddress(address);
+        
+        JOptionPane.showMessageDialog(this, 
+            "Profile updated successfully!",
+            "Success", JOptionPane.INFORMATION_MESSAGE);
     }
     
-    private boolean isEnrolled(CourseOffering offering) {
+    // ========== INITIAL DATA LOADING ==========
+    
+    private void loadInitialData() {
+        // Load semesters
+        for (Semester semester : directory.getSemesters()) {
+            semesterComboBox.addItem(semester);
+            transcriptSemesterComboBox.addItem(semester.getFullName());
+        }
+        
+        // Load enrolled courses for coursework
         for (Enrollment e : currentStudent.getEnrollments()) {
-            if (e.getCourseOffering().equals(offering) && e.isActive()) {
-                return true;
+            if (e.isActive()) {
+                courseworkCourseComboBox.addItem(e.getCourseOffering());
             }
         }
-        return false;
-    }
-    
-    private Enrollment findEnrollment(CourseOffering offering) {
-        for (Enrollment e : currentStudent.getEnrollments()) {
-            if (e.getCourseOffering().equals(offering)) {
-                return e;
-            }
+        
+        // Load initial data for all panels
+        if (semesterComboBox.getItemCount() > 0) {
+            semesterComboBox.setSelectedIndex(0);
+            loadCourseOfferings();
         }
-        return null;
-    }
-    
-    private Semester findSemesterByName(String name) {
-        for (Semester s : directory.getSemesters()) {
-            if (s.getFullName().equals(name)) {
-                return s;
-            }
+        
+        updateGraduationAudit();
+        loadTranscript();
+        updateFinancialInfo();
+        loadProfileData();
+        
+        if (courseworkCourseComboBox.getItemCount() > 0) {
+            loadAssignments();
         }
-        return null;
     }
 }
