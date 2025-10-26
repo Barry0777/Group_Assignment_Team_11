@@ -20,6 +20,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
     private java.util.List<model.CourseOffering> current = new java.util.ArrayList<>();
     
     private javax.swing.table.DefaultTableModel studentsModel;
+    
 
     
     public FacultyDashboard() {
@@ -149,39 +150,43 @@ public class FacultyDashboard extends javax.swing.JPanel {
         }
     }
     private void initStudentsTab() {
-        tabStudents.setLayout(new java.awt.BorderLayout());
+        studentsModel = (javax.swing.table.DefaultTableModel) tblStudents.getModel();
+        studentsModel.setRowCount(0);
 
-        studentsModel = new javax.swing.table.DefaultTableModel(
-            new Object[]{"Student#", "Name", "Email", "Progress %", "Letter"}, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
-        };
-        tblStudents.setModel(studentsModel);
-        tblStudents.setAutoCreateRowSorter(true);
-        tblStudents.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-
+        // 2) 下拉框填充
         cmbStuCourse.removeAllItems();
-        for (model.CourseOffering co : me.getAssignedCourses()) cmbStuCourse.addItem(co);
+        if (me != null) {
+            for (model.CourseOffering co : me.getAssignedCourses()) {
+                cmbStuCourse.addItem(co);
+            }
+        }
 
+        // 3) 下拉渲染（可选）
         cmbStuCourse.setRenderer(new javax.swing.DefaultListCellRenderer() {
-            @Override public java.awt.Component getListCellRendererComponent(
-                javax.swing.JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+            @Override
+            public java.awt.Component getListCellRendererComponent(
+                javax.swing.JList<?> list, Object value, int index,
+                boolean isSelected, boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof model.CourseOffering) {
-                    model.CourseOffering co = (model.CourseOffering) value;
-                    // 如果 Course 的方法名不同，按你们模型改：getCourseId()/getTitle()
+                if (value instanceof model.CourseOffering co) {
                     setText(co.getCourse().getTitle() + " (" + co.getCourse().getCourseId() + ") - " + co.getSemester());
                 }
                 return this;
             }
         });
 
-        cmbStuCourse.addActionListener(e -> reloadStudents());
-        btnStuRefresh.addActionListener(e -> reloadStudents());
+        // 4) 事件（只接线，不改布局）
+        java.awt.event.ActionListener reload = e -> reloadStudents();
+        cmbStuCourse.addActionListener(reload);
+        btnStuRefresh.addActionListener(reload);
         btnViewProgress.addActionListener(e -> showProgress());
         btnTranscript.addActionListener(e -> showTranscript());
 
-        if (cmbStuCourse.getItemCount() > 0) cmbStuCourse.setSelectedIndex(0);
-        reloadStudents();
+        // 5) 首次加载
+        if (cmbStuCourse.getItemCount() > 0) {
+            cmbStuCourse.setSelectedIndex(0);
+            reloadStudents();
+        }
     }
     private void initGradingTab()  { }
     private void initReportsTab()  { }
