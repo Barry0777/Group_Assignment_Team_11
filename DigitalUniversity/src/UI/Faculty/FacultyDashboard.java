@@ -21,7 +21,8 @@ public class FacultyDashboard extends javax.swing.JPanel {
     
     private javax.swing.table.DefaultTableModel studentsModel;
     
-
+    private javax.swing.DefaultListModel<model.Assignment> assignmentsModel;
+    private javax.swing.table.DefaultTableModel gradesModel;
     
     public FacultyDashboard() {
         initComponents();
@@ -153,7 +154,6 @@ public class FacultyDashboard extends javax.swing.JPanel {
         studentsModel = (javax.swing.table.DefaultTableModel) tblStudents.getModel();
         studentsModel.setRowCount(0);
 
-        // 2) 下拉框填充
         cmbStuCourse.removeAllItems();
         if (me != null) {
             for (model.CourseOffering co : me.getAssignedCourses()) {
@@ -161,7 +161,6 @@ public class FacultyDashboard extends javax.swing.JPanel {
             }
         }
 
-        // 3) 下拉渲染（可选）
         cmbStuCourse.setRenderer(new javax.swing.DefaultListCellRenderer() {
             @Override
             public java.awt.Component getListCellRendererComponent(
@@ -175,20 +174,96 @@ public class FacultyDashboard extends javax.swing.JPanel {
             }
         });
 
-        // 4) 事件（只接线，不改布局）
         java.awt.event.ActionListener reload = e -> reloadStudents();
         cmbStuCourse.addActionListener(reload);
         btnStuRefresh.addActionListener(reload);
         btnViewProgress.addActionListener(e -> showProgress());
         btnTranscript.addActionListener(e -> showTranscript());
 
-        // 5) 首次加载
         if (cmbStuCourse.getItemCount() > 0) {
             cmbStuCourse.setSelectedIndex(0);
             reloadStudents();
         }
     }
-    private void initGradingTab()  { }
+    private void initGradingTab()  {
+        
+        cmbGradeCourse.removeAllItems();
+        if (me != null) {
+            for (model.CourseOffering co : me.getAssignedCourses()) {
+                cmbGradeCourse.addItem(co);
+            }
+        }
+        
+        cmbGradeCourse.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(
+                    javax.swing.JList<?> list, Object value, int index,
+                    boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof model.CourseOffering co) {
+                    setText(co.getCourse().getTitle() + " (" + co.getCourse().getCourseId() + ") - " + co.getSemester());
+                }
+                return this;
+            }
+        });
+
+        assignmentsModel = new javax.swing.DefaultListModel<>();
+        lstAssignments.setModel(assignmentsModel);
+        lstAssignments.setCellRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(
+                    javax.swing.JList<?> list, Object value, int index,
+                    boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof model.Assignment a) {
+                    setText(a.getTitle() + " (max " + a.getMaxPoints() + ")");
+                }
+                return this;
+            }
+        });
+
+        gradesModel = new javax.swing.table.DefaultTableModel(
+                new Object[]{"Student ID", "Name", "Score", "Letter"}, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return c == 2; }
+        };
+        tblGrades.setModel(gradesModel);
+        tblGrades.setAutoCreateRowSorter(true);
+        tblGrades.setFillsViewportHeight(true);
+
+        gradesModel.addTableModelListener(e -> {
+            if (e.getColumn() == 2 && e.getFirstRow() >= 0) {
+                int r = e.getFirstRow();
+                var asg = lstAssignments.getSelectedValue();
+                var scoreStr = String.valueOf(gradesModel.getValueAt(r, 2)).trim();
+                if (asg != null && utility.ValidationUtility.isInteger(scoreStr)) {
+                    int score = Integer.parseInt(scoreStr);
+                    double pct = score * 100.0 / asg.getMaxPoints();
+                    gradesModel.setValueAt(business.GradeCalculator.calculateLetterGrade(pct), r, 3);
+                } else {
+                    gradesModel.setValueAt("", r, 3);
+                }
+            }
+        });
+
+        java.awt.event.ActionListener reloadAssignments = e -> loadAssignments();
+        cmbGradeCourse.addActionListener(reloadAssignments);
+        btnLoadAssgn.addActionListener(reloadAssignments);
+
+        lstAssignments.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) loadGradesForSelectedAssignment();
+        });
+
+        btnAddAssgn.addActionListener(e -> newAssignment());
+        btnSaveGrades.addActionListener(e -> saveGrades());
+        btnAutoFinal.addActionListener(e -> autoFinalGrade());
+        btnRank.addActionListener(e -> showRanking());
+        btnClassGpa.addActionListener(e -> showClassGpa());
+
+        if (cmbGradeCourse.getItemCount() > 0) {
+            cmbGradeCourse.setSelectedIndex(0);
+            loadAssignments();
+        }
+    }
     private void initReportsTab()  { }
     private void initProfileTab()  { }
     
@@ -288,6 +363,162 @@ public class FacultyDashboard extends javax.swing.JPanel {
             this, msg, "Error", javax.swing.JOptionPane.ERROR_MESSAGE
         );
     }
+    
+    
+    
+    
+    private model.CourseOffering getSelectedCourse() {
+        return (model.CourseOffering) cmbGradeCourse.getSelectedItem();
+    }
+
+    private void loadAssignments() {
+        assignmentsModel.clear();
+        var co = getSelectedCourse();
+        if (co == null) return;
+        
+        for (model.Assignment a : co.getAssignments()) {
+            assignmentsModel.addElement(a);
+        }
+        if (!assignmentsModel.isEmpty()) {
+            lstAssignments.setSelectedIndex(0);
+        } else {
+            gradesModel.setRowCount(0);
+        }
+    }
+
+    private void loadGradesForSelectedAssignment() {
+        gradesModel.setRowCount(0);
+        var co  = getSelectedCourse();
+        var asg = lstAssignments.getSelectedValue();
+        if (co == null || asg == null) return;
+
+        try {
+            for (model.Student s : fs.getEnrolledStudents(co)) {
+                
+                String id   = s.getUniversityId();
+                String name = s.getFirstName() + " " + s.getLastName();
+                gradesModel.addRow(new Object[]{ id, name, "", "" });
+            }
+        } catch (IllegalArgumentException ex) {
+            error(ex.getMessage());
+        }
+    }
+
+    private model.Student findStudentById(model.CourseOffering co, String sid) {
+        for (model.Student s : fs.getEnrolledStudents(co)) {
+            if (sid.equals(s.getUniversityId())) return s;
+        }
+        return null;
+    }
+
+    private void saveGrades() {
+        var co  = getSelectedCourse();
+        var asg = lstAssignments.getSelectedValue();
+        if (co == null || asg == null) { info("Please select a course and an assignment."); return; }
+
+        try {
+            for (int r = 0; r < gradesModel.getRowCount(); r++) {
+                String sid      = String.valueOf(gradesModel.getValueAt(r, 0)).trim();
+                String scoreStr = String.valueOf(gradesModel.getValueAt(r, 2)).trim();
+
+                if (!utility.ValidationUtility.isNotEmpty(scoreStr)) continue; // 你们项目现成的方法
+                int score;
+                try {
+                    score = Integer.parseInt(scoreStr);
+                } catch (NumberFormatException ex) {
+                    continue; // 非法输入就跳过该行
+                }
+                if (score < 0 || score > asg.getMaxPoints()) {
+                    throw new IllegalArgumentException("Score must be between 0 and " + asg.getMaxPoints() + ".");
+                }
+
+                model.Student stu = findStudentById(co, sid);
+                if (stu != null) {
+                    // 注意参数顺序：Assignment, Student, double/int（按你们 FacultyService 实际签名）
+                    fs.gradeAssignment(asg, stu, score);
+                }
+            }
+            info("Grades saved.");
+            loadGradesForSelectedAssignment(); // 若你有这个刷新方法
+        } catch (IllegalArgumentException ex) {
+            error(ex.getMessage());
+        }
+    }
+
+    private void newAssignment() {
+        var co = getSelectedCourse();
+        if (co == null) { info("Please select a course."); return; }
+
+        String title = javax.swing.JOptionPane.showInputDialog(this, "Assignment title:");
+        if (title == null || !utility.ValidationUtility.isNotEmpty(title)) return;
+
+        String maxStr = javax.swing.JOptionPane.showInputDialog(this, "Max points:");
+        if (maxStr == null || !utility.ValidationUtility.isInteger(maxStr)) return;
+        int maxPts = Integer.parseInt(maxStr);
+        if (maxPts <= 0) { error("Max points must be a positive integer."); return; }
+
+        try {
+            
+            String desc = javax.swing.JOptionPane.showInputDialog(this, "Description (optional):");
+            fs.createAssignment(co, title.trim(), (desc==null?"":desc.trim()), maxPts);
+            
+            loadAssignments();
+            info("Assignment created.");
+        } catch (IllegalArgumentException ex) {
+            error(ex.getMessage());
+        }
+    }
+
+    private void autoFinalGrade() {
+        var co = getSelectedCourse();
+        if (co == null) { info("Please select a course."); return; }
+
+        try {
+            for (model.Student s : fs.getEnrolledStudents(co)) {
+                fs.assignFinalGrade(s, co);
+            }
+            info("Final grades assigned.");
+        } catch (IllegalArgumentException ex) {
+            error(ex.getMessage());
+        }
+    }
+
+    private void showRanking() {
+        var co = getSelectedCourse();
+        if (co == null) { info("Please select a course."); return; }
+
+        try {
+            java.util.ArrayList<java.util.HashMap<String,Object>> ranked = fs.rankStudentsByGrade(co);
+
+            StringBuilder sb = new StringBuilder("Ranking:\n");
+            int i = 1;
+            for (java.util.HashMap<String,Object> row : ranked) {
+                model.Student s = (model.Student) row.get("student");
+                double pct      = ((Number) row.get("percentage")).doubleValue();
+                String letter   = String.valueOf(row.get("letter"));
+                sb.append(i++).append(". ")
+                  .append(s.getFirstName()).append(" ").append(s.getLastName())
+                  .append(" — ").append(String.format("%.2f", pct)).append("% (").append(letter).append(")\n");
+            }
+
+            javax.swing.JTextArea ta = new javax.swing.JTextArea(sb.toString(), 18, 60);
+            ta.setEditable(false);
+            javax.swing.JOptionPane.showMessageDialog(this, new javax.swing.JScrollPane(ta),
+                    "Ranking", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        } catch (IllegalArgumentException ex) {
+            error(ex.getMessage());
+        }
+    }
+
+    private void showClassGpa() {
+        var co = getSelectedCourse();
+        if (co == null) { info("Please select a course."); return; }
+        try {
+            double gpa = fs.calculateClassGPA(co);
+            info(String.format("Class GPA: %.2f", gpa));
+        } catch (IllegalArgumentException ex) { error(ex.getMessage()); }
+    }
+
 
 
 
@@ -478,8 +709,6 @@ public class FacultyDashboard extends javax.swing.JPanel {
 
         jLabel1.setText("Course");
 
-        cmbGradeCourse.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-
         btnLoadAssgn.setText("Load");
 
         btnAddAssgn.setText("New");
@@ -546,11 +775,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
 
         tabGrading.add(jPanel3, java.awt.BorderLayout.PAGE_START);
 
-        lstAssignments.setModel(new javax.swing.AbstractListModel<String>() {
-            String[] strings = { "Item 1", "Item 2", "Item 3", "Item 4", "Item 5" };
-            public int getSize() { return strings.length; }
-            public String getElementAt(int i) { return strings[i]; }
-        });
+        lstAssignments.setToolTipText("");
         jScrollPane3.setViewportView(lstAssignments);
 
         javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
@@ -567,7 +792,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
             .addGroup(jPanel4Layout.createSequentialGroup()
                 .addGap(50, 50, 50)
                 .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(161, Short.MAX_VALUE))
+                .addContainerGap(185, Short.MAX_VALUE))
         );
 
         tabGrading.add(jPanel4, java.awt.BorderLayout.LINE_START);
@@ -641,7 +866,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
     private javax.swing.JButton btnTranscript;
     private javax.swing.JButton btnUpload;
     private javax.swing.JButton btnViewProgress;
-    private javax.swing.JComboBox<String> cmbGradeCourse;
+    private javax.swing.JComboBox<model.CourseOffering> cmbGradeCourse;
     private javax.swing.JComboBox<model.Semester> cmbSem;
     private javax.swing.JComboBox<model.CourseOffering> cmbStuCourse;
     private javax.swing.JTable courseTable;
@@ -657,7 +882,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
     private javax.swing.JLabel lblCourse;
     private javax.swing.JLabel lblHeader;
     private javax.swing.JLabel lblSemester;
-    private javax.swing.JList<String> lstAssignments;
+    private javax.swing.JList<model.Assignment> lstAssignments;
     private javax.swing.JPanel tabCourses;
     private javax.swing.JPanel tabGrading;
     private javax.swing.JPanel tabProfile;
