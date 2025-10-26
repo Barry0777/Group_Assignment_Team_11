@@ -4,9 +4,7 @@
  */
 package UI.Faculty;
 
-import javax.swing.*;
-import java.awt.*;
-import model.Faculty;
+
 /**
  *
  * @author 123
@@ -14,6 +12,12 @@ import model.Faculty;
 public class FacultyDashboard extends javax.swing.JPanel {
     
     private model.Faculty me;
+    
+    private final business.FacultyService fs = new business.FacultyService();
+    private final business.UniversityDirectory dir = business.UniversityDirectory.getInstance();
+    
+    private javax.swing.table.DefaultTableModel courseModel;
+    private java.util.List<model.CourseOffering> current = new java.util.ArrayList<>();
 
     
     public FacultyDashboard() {
@@ -39,7 +43,111 @@ public class FacultyDashboard extends javax.swing.JPanel {
     }
     
     private void initCoursesTab() {
-        
+        courseModel = new javax.swing.table.DefaultTableModel(
+        new Object[]{"Course#", "Title", "Description", "Room/Time", "Capacity", "Open?", "Syllabus"}, 0) {
+        @Override public boolean isCellEditable(int r, int c) { return c==1||c==2||c==3||c==4||c==6; }
+        };
+        courseTable.setModel(courseModel);
+        courseTable.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        courseTable.setAutoCreateRowSorter(true);         
+        courseTable.setFillsViewportHeight(true);
+
+        // 2) 学期下拉
+        cmbSem.removeAllItems();
+        for (model.Semester s : dir.getSemesters()) cmbSem.addItem(s);
+        model.Semester sem = (model.Semester) cmbSem.getSelectedItem();
+
+        // 3) 事件
+        cmbSem.addActionListener(e -> loadCourses());
+        btnSave.addActionListener(e -> saveCourses());
+        btnOpen.addActionListener(e -> toggleEnrollment(true));
+        btnClose.addActionListener(e -> toggleEnrollment(false));
+        btnUpload.addActionListener(e -> chooseSyllabus());
+
+        // 4) 首次加载
+        if (cmbSem.getItemCount() > 0) cmbSem.setSelectedIndex(0);
+        loadCourses();
+    }
+
+    private void loadCourses() {
+        courseModel.setRowCount(0);
+        var sem = (model.Semester) cmbSem.getSelectedItem();
+        if (sem == null || me == null) return;
+        try {
+            current = new java.util.ArrayList<>();
+            for (var co : me.getAssignedCourses()) if (sem.equals(co.getSemester())) current.add(co);
+            for (var co : current) {
+                courseModel.addRow(new Object[]{
+                    co.getCourse().getCourseId(),  
+                    co.getCourse().getTitle(),   
+                    co.getCourse().getDescription(),  
+                    co.getRoomLocation(),           
+                    co.getMaxCapacity(),             
+                    co.isEnrollmentOpen(),
+                    co.getSyllabus() == null ? "" : co.getSyllabus() 
+                });
+            }
+        } catch (IllegalArgumentException ex) {
+            javax.swing.JOptionPane.showMessageDialog(this, ex.getMessage(), "Load Error",
+                    javax.swing.JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void saveCourses() {
+        for (int r=0; r<courseModel.getRowCount(); r++) {
+            try {
+                model.CourseOffering co = current.get(r);
+                String title    = String.valueOf(courseModel.getValueAt(r,1)).trim();
+                String desc     = String.valueOf(courseModel.getValueAt(r,2)).trim();
+                String room = String.valueOf(courseModel.getValueAt(r,3)).trim();
+                String capStr   = String.valueOf(courseModel.getValueAt(r,4)).trim();
+                String syllabus = String.valueOf(courseModel.getValueAt(r,6)).trim();
+
+                if (!utility.ValidationUtility.isNotEmpty(title) || !utility.ValidationUtility.isNotEmpty(room))
+                    throw new IllegalArgumentException("Title and Room/Schedule cannot be empty.");
+                if (!utility.ValidationUtility.isValidInteger(capStr) || Integer.parseInt(capStr) <= 0)
+                    throw new IllegalArgumentException("Capacity must be a positive integer.");
+
+                co.getCourse().setTitle(title);
+                co.getCourse().setDescription(desc);
+                co.setRoomLocation(room);
+                co.setMaxCapacity(Integer.parseInt(capStr));
+                if (utility.ValidationUtility.isNotEmpty(syllabus)) 
+                co.setSyllabus(syllabus);
+            }
+                
+            catch (IllegalArgumentException ex) {
+                javax.swing.JOptionPane.showMessageDialog(this, "Row "+(r+1)+" ：" + ex.getMessage(),
+                        "Save Error", javax.swing.JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
+        javax.swing.JOptionPane.showMessageDialog(this, "Saved successfully.");
+        loadCourses();
+}
+
+private void toggleEnrollment(boolean open) {
+    int row = courseTable.getSelectedRow();
+    if (row < 0) { javax.swing.JOptionPane.showMessageDialog(this, "Please select a course first."); return; }
+    try {
+        var co = current.get(row);
+        if (open) fs.openEnrollment(co); else fs.closeEnrollment(co);
+        javax.swing.JOptionPane.showMessageDialog(this, (open ? "Enrollment has been opened for this course." : "Enrollment has been closed for this course") );
+        loadCourses();
+    } catch (IllegalArgumentException ex) {
+        javax.swing.JOptionPane.showMessageDialog(this, ex.getMessage(), "Action Error",
+                javax.swing.JOptionPane.ERROR_MESSAGE);
+    }
+}
+
+private void chooseSyllabus() {
+    int row = courseTable.getSelectedRow();
+    if (row < 0) { javax.swing.JOptionPane.showMessageDialog(this, "Please select a course first."); return; }
+    var fc = new javax.swing.JFileChooser();
+    fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("PDF/DOC", "pdf","doc","docx"));
+    if (fc.showOpenDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+        courseModel.setValueAt(fc.getSelectedFile().getAbsolutePath(), row, 6);
+    }
     }
     private void initStudentsTab() { }
     private void initGradingTab()  { }
@@ -58,6 +166,15 @@ public class FacultyDashboard extends javax.swing.JPanel {
         lblHeader = new javax.swing.JLabel();
         tabs = new javax.swing.JTabbedPane();
         tabCourses = new javax.swing.JPanel();
+        jPanel1 = new javax.swing.JPanel();
+        lblSemester = new javax.swing.JLabel();
+        cmbSem = new javax.swing.JComboBox<>();
+        btnSave = new javax.swing.JButton();
+        btnOpen = new javax.swing.JButton();
+        btnClose = new javax.swing.JButton();
+        btnUpload = new javax.swing.JButton();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        courseTable = new javax.swing.JTable();
         tabStudents = new javax.swing.JPanel();
         tabGrading = new javax.swing.JPanel();
         tabReports = new javax.swing.JPanel();
@@ -68,16 +185,67 @@ public class FacultyDashboard extends javax.swing.JPanel {
         lblHeader.setText("Faculty Dashboard");
         add(lblHeader, java.awt.BorderLayout.PAGE_START);
 
-        javax.swing.GroupLayout tabCoursesLayout = new javax.swing.GroupLayout(tabCourses);
-        tabCourses.setLayout(tabCoursesLayout);
-        tabCoursesLayout.setHorizontalGroup(
-            tabCoursesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 746, Short.MAX_VALUE)
+        tabCourses.setLayout(new java.awt.BorderLayout());
+
+        lblSemester.setText("Semester");
+
+        btnSave.setText("Save");
+
+        btnOpen.setText("Open");
+
+        btnClose.setText("Close");
+
+        btnUpload.setText("Upload");
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(20, 20, 20)
+                .addComponent(lblSemester)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(cmbSem, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(105, 105, 105)
+                .addComponent(btnSave)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(btnOpen)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(btnClose)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(btnUpload)
+                .addContainerGap(166, Short.MAX_VALUE))
         );
-        tabCoursesLayout.setVerticalGroup(
-            tabCoursesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 478, Short.MAX_VALUE)
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(15, 15, 15)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblSemester)
+                    .addComponent(cmbSem, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnSave)
+                    .addComponent(btnOpen)
+                    .addComponent(btnClose)
+                    .addComponent(btnUpload))
+                .addContainerGap(65, Short.MAX_VALUE))
         );
+
+        tabCourses.add(jPanel1, java.awt.BorderLayout.PAGE_START);
+
+        courseTable.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4"
+            }
+        ));
+        jScrollPane1.setViewportView(courseTable);
+
+        tabCourses.add(jScrollPane1, java.awt.BorderLayout.CENTER);
 
         tabs.addTab("My Courses", tabCourses);
 
@@ -138,7 +306,16 @@ public class FacultyDashboard extends javax.swing.JPanel {
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnClose;
+    private javax.swing.JButton btnOpen;
+    private javax.swing.JButton btnSave;
+    private javax.swing.JButton btnUpload;
+    private javax.swing.JComboBox<model.Semester> cmbSem;
+    private javax.swing.JTable courseTable;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel lblHeader;
+    private javax.swing.JLabel lblSemester;
     private javax.swing.JPanel tabCourses;
     private javax.swing.JPanel tabGrading;
     private javax.swing.JPanel tabProfile;
