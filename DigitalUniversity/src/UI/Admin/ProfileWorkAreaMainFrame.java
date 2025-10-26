@@ -27,6 +27,8 @@ public class ProfileWorkAreaMainFrame extends javax.swing.JFrame {
         initComponents();
         authService = AuthenticationService.getInstance();
         universityDirectory = UniversityDirectory.getInstance();
+        
+        new business.DataInitializer().initializeData(); 
 
             if (authService.getUserByUsername("admin") == null) {
         // Admin(String universityId, String firstName, String lastName, String email)
@@ -151,7 +153,12 @@ public class ProfileWorkAreaMainFrame extends javax.swing.JFrame {
                         break;
                     case "faculty":
                         // TODO: add FacultyDashboard
+                        model.Faculty me = (model.Faculty) user.getPerson();
+                        UI.Faculty.FacultyDashboard facPanel = new UI.Faculty.FacultyDashboard(me);
+                        jPanel2.add("FacultyDashboard", facPanel);
+                        layout.show(jPanel2, "FacultyDashboard");
                         break;
+                        
                     case "student":
                         // TODO: add StudentDashboard
                         break;
