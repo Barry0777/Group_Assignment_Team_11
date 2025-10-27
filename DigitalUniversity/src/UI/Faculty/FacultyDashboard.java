@@ -277,14 +277,13 @@ public class FacultyDashboard extends javax.swing.JPanel {
         tblReport.setAutoCreateRowSorter(true);
         tblReport.setFillsViewportHeight(true);
 
-        // 2) 课程下拉框
         cmbRepCourse.removeAllItems();
         if (me != null) {
             for (model.CourseOffering co : me.getAssignedCourses()) {
                 cmbRepCourse.addItem(co);
             }
         }
-        // 友好显示：Title (ID) - Semester
+        
         cmbRepCourse.setRenderer(new javax.swing.DefaultListCellRenderer() {
             @Override
             public java.awt.Component getListCellRendererComponent(
@@ -298,16 +297,28 @@ public class FacultyDashboard extends javax.swing.JPanel {
             }
         });
 
-        // 3) 事件
         btnRepRefresh.addActionListener(e -> loadReportRoster());
         btnExportRoster.addActionListener(e -> exportRosterCsv());
         btnExportGrades.addActionListener(e -> exportGradesCsv());
 
-        // 4) 首次加载
         if (cmbRepCourse.getItemCount() > 0) {
             cmbRepCourse.setSelectedIndex(0);
             loadReportRoster();
         }
+        
+        
+        txtReport.setEditable(false);
+        txtReport.setFont(new java.awt.Font("Monospaced", 0, 12));
+
+        cmbRepCourse.addActionListener(e -> { showReportSummary(); showTuitionTotalEstimated(); });
+        btnRepRefresh.addActionListener(e -> { showReportSummary(); showTuitionTotalEstimated(); });
+
+        if (cmbRepCourse.getItemCount() > 0) {
+            cmbRepCourse.setSelectedIndex(0);
+            showReportSummary();
+            showTuitionTotalEstimated();
+        }
+
     }
     private void initProfileTab()  { 
         txtProfFirstName.setEditable(false);
@@ -475,12 +486,12 @@ public class FacultyDashboard extends javax.swing.JPanel {
                 String sid      = String.valueOf(gradesModel.getValueAt(r, 0)).trim();
                 String scoreStr = String.valueOf(gradesModel.getValueAt(r, 2)).trim();
 
-                if (!utility.ValidationUtility.isNotEmpty(scoreStr)) continue; // 你们项目现成的方法
+                if (!utility.ValidationUtility.isNotEmpty(scoreStr)) continue; 
                 int score;
                 try {
                     score = Integer.parseInt(scoreStr);
                 } catch (NumberFormatException ex) {
-                    continue; // 非法输入就跳过该行
+                    continue; 
                 }
                 if (score < 0 || score > asg.getMaxPoints()) {
                     throw new IllegalArgumentException("Score must be between 0 and " + asg.getMaxPoints() + ".");
@@ -488,12 +499,12 @@ public class FacultyDashboard extends javax.swing.JPanel {
 
                 model.Student stu = findStudentById(co, sid);
                 if (stu != null) {
-                    // 注意参数顺序：Assignment, Student, double/int（按你们 FacultyService 实际签名）
+                    
                     fs.gradeAssignment(asg, stu, score);
                 }
             }
             info("Grades saved.");
-            loadGradesForSelectedAssignment(); // 若你有这个刷新方法
+            loadGradesForSelectedAssignment();
         } catch (IllegalArgumentException ex) {
             error(ex.getMessage());
         }
@@ -626,8 +637,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
         try (var w = new java.io.BufferedWriter(new java.io.FileWriter(file))) {
             w.write("Student ID,Name,Score,Letter");
             w.newLine();
-
-            // 关键：这里一定是 List<Student>
+            
             java.util.List<model.Student> students = fs.getEnrolledStudents(co);
 
             for (model.Student s : students) {
@@ -676,7 +686,56 @@ public class FacultyDashboard extends javax.swing.JPanel {
 
 
 
-    
+    private void showReportSummary() {
+        var co = (model.CourseOffering) cmbRepCourse.getSelectedItem();
+        if (co == null) { info("Please select a course."); return; }
+
+        java.util.List<model.Student> students = fs.getEnrolledStudents(co);
+        int count = students.size();
+
+        double sumPct = 0.0;
+        int havePct = 0;
+        java.util.Map<String, Integer> dist = new java.util.LinkedHashMap<>();
+        dist.put("A", 0); dist.put("B", 0); dist.put("C", 0); dist.put("D", 0); dist.put("F", 0);
+
+        for (var s : students) {
+            
+            var prog = fs.getStudentProgress(s, co);
+            Object p = (prog == null) ? null : prog.get("percentage");
+            if (p instanceof Number) {
+                double pct = ((Number) p).doubleValue();
+                sumPct += pct;
+                havePct++;
+                String letter = business.GradeCalculator.calculateLetterGrade(pct);
+                dist.put(letter, dist.getOrDefault(letter, 0) + 1);
+            }
+        }
+
+        double avgPct = havePct == 0 ? 0.0 : (sumPct / havePct);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Enrollment count: ").append(count).append("\n");
+        sb.append("Average %: ").append(String.format("%.2f", avgPct)).append("\n");
+        sb.append("Grade distribution: ").append(dist).append("\n");
+
+        txtReport.setText(sb.toString());
+    }
+
+    private void showTuitionTotalEstimated() {
+        var co = (model.CourseOffering) cmbRepCourse.getSelectedItem();
+        if (co == null) { return; }
+
+        int enrolled = fs.getEnrolledStudents(co).size();
+        int credits = co.getCourse().getCreditHours();
+
+        double total = fs.getTotalTuitionCollected(co); 
+        StringBuilder sb = new StringBuilder();
+        sb.append("Enrollment count: ").append(enrolled).append('\n');
+        sb.append("Credits per course: ").append(credits).append('\n');
+        sb.append(String.format("Total tuition collected: $%,.2f", total)); 
+        txtReport.setText(sb.toString());
+    }
+
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -730,6 +789,8 @@ public class FacultyDashboard extends javax.swing.JPanel {
         btnRepRefresh = new javax.swing.JButton();
         btnExportRoster = new javax.swing.JButton();
         btnExportGrades = new javax.swing.JButton();
+        jScrollPane6 = new javax.swing.JScrollPane();
+        txtReport = new javax.swing.JTextArea();
         jScrollPane5 = new javax.swing.JScrollPane();
         tblReport = new javax.swing.JTable();
         tabProfile = new javax.swing.JPanel();
@@ -776,7 +837,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
                 .addComponent(btnClose)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(btnUpload)
-                .addContainerGap(166, Short.MAX_VALUE))
+                .addContainerGap(179, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -843,7 +904,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
                 .addComponent(btnViewProgress)
                 .addGap(18, 18, 18)
                 .addComponent(btnTranscript)
-                .addContainerGap(137, Short.MAX_VALUE))
+                .addContainerGap(150, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -920,7 +981,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(btnSaveGrades)
                     .addComponent(btnClassGpa))
-                .addContainerGap(99, Short.MAX_VALUE))
+                .addContainerGap(112, Short.MAX_VALUE))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -964,7 +1025,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
             .addGroup(jPanel4Layout.createSequentialGroup()
                 .addGap(50, 50, 50)
                 .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(185, Short.MAX_VALUE))
+                .addContainerGap(250, Short.MAX_VALUE))
         );
 
         tabGrading.add(jPanel4, java.awt.BorderLayout.LINE_START);
@@ -1006,22 +1067,32 @@ public class FacultyDashboard extends javax.swing.JPanel {
 
         btnExportGrades.setText("Export Grades");
 
+        txtReport.setEditable(false);
+        txtReport.setColumns(20);
+        txtReport.setRows(5);
+        jScrollPane6.setViewportView(txtReport);
+
         javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
         jPanel5.setLayout(jPanel5Layout);
         jPanel5Layout.setHorizontalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel5Layout.createSequentialGroup()
-                .addGap(56, 56, 56)
-                .addComponent(jLabel2)
-                .addGap(18, 18, 18)
-                .addComponent(cmbRepCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(159, 159, 159)
-                .addComponent(btnRepRefresh)
-                .addGap(33, 33, 33)
-                .addComponent(btnExportRoster)
-                .addGap(29, 29, 29)
-                .addComponent(btnExportGrades)
-                .addContainerGap(49, Short.MAX_VALUE))
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel5Layout.createSequentialGroup()
+                        .addGap(56, 56, 56)
+                        .addComponent(jLabel2)
+                        .addGap(18, 18, 18)
+                        .addComponent(cmbRepCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(159, 159, 159)
+                        .addComponent(btnRepRefresh)
+                        .addGap(33, 33, 33)
+                        .addComponent(btnExportRoster)
+                        .addGap(29, 29, 29)
+                        .addComponent(btnExportGrades))
+                    .addGroup(jPanel5Layout.createSequentialGroup()
+                        .addGap(25, 25, 25)
+                        .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(62, Short.MAX_VALUE))
         );
         jPanel5Layout.setVerticalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1033,7 +1104,9 @@ public class FacultyDashboard extends javax.swing.JPanel {
                     .addComponent(btnRepRefresh)
                     .addComponent(btnExportRoster)
                     .addComponent(btnExportGrades))
-                .addContainerGap(59, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, 51, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(15, Short.MAX_VALUE))
         );
 
         tabReports.add(jPanel5, java.awt.BorderLayout.PAGE_START);
@@ -1094,7 +1167,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
                     .addGroup(jPanel6Layout.createSequentialGroup()
                         .addGap(209, 209, 209)
                         .addComponent(btnProfSave)))
-                .addContainerGap(395, Short.MAX_VALUE))
+                .addContainerGap(408, Short.MAX_VALUE))
         );
         jPanel6Layout.setVerticalGroup(
             jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1113,7 +1186,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
                     .addComponent(txtProfEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(59, 59, 59)
                 .addComponent(btnProfSave)
-                .addContainerGap(264, Short.MAX_VALUE))
+                .addContainerGap(329, Short.MAX_VALUE))
         );
 
         tabProfile.add(jPanel6, java.awt.BorderLayout.CENTER);
@@ -1202,6 +1275,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JScrollPane jScrollPane4;
     private javax.swing.JScrollPane jScrollPane5;
+    private javax.swing.JScrollPane jScrollPane6;
     private javax.swing.JLabel lblCourse;
     private javax.swing.JLabel lblHeader;
     private javax.swing.JLabel lblSemester;
@@ -1218,5 +1292,6 @@ public class FacultyDashboard extends javax.swing.JPanel {
     private javax.swing.JTextField txtProfEmail;
     private javax.swing.JTextField txtProfFirstName;
     private javax.swing.JTextField txtProfLastName;
+    private javax.swing.JTextArea txtReport;
     // End of variables declaration//GEN-END:variables
 }
