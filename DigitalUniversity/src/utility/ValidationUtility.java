@@ -385,4 +385,8 @@ public class ValidationUtility {
     public static String generateErrorMessage(String fieldName, String requirement) {
         return fieldName + " " + requirement;
     }
+
+    public static boolean isInteger(String scoreStr) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
 }
