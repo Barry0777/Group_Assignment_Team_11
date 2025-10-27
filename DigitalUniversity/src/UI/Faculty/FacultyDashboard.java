@@ -24,6 +24,8 @@ public class FacultyDashboard extends javax.swing.JPanel {
     private javax.swing.DefaultListModel<model.Assignment> assignmentsModel;
     private javax.swing.table.DefaultTableModel gradesModel;
     
+    private javax.swing.table.DefaultTableModel reportModel;
+
     public FacultyDashboard() {
         initComponents();
        
@@ -568,6 +570,14 @@ public class FacultyDashboard extends javax.swing.JPanel {
         jScrollPane4 = new javax.swing.JScrollPane();
         tblGrades = new javax.swing.JTable();
         tabReports = new javax.swing.JPanel();
+        jPanel5 = new javax.swing.JPanel();
+        jLabel2 = new javax.swing.JLabel();
+        cmbRepCourse = new javax.swing.JComboBox<>();
+        btnRepRefresh = new javax.swing.JButton();
+        btnExportRoster = new javax.swing.JButton();
+        btnExportGrades = new javax.swing.JButton();
+        jScrollPane5 = new javax.swing.JScrollPane();
+        tblReport = new javax.swing.JTable();
         tabProfile = new javax.swing.JPanel();
 
         setLayout(new java.awt.BorderLayout());
@@ -814,16 +824,74 @@ public class FacultyDashboard extends javax.swing.JPanel {
 
         tabs.addTab("Grading & Ranking", tabGrading);
 
-        javax.swing.GroupLayout tabReportsLayout = new javax.swing.GroupLayout(tabReports);
-        tabReports.setLayout(tabReportsLayout);
-        tabReportsLayout.setHorizontalGroup(
-            tabReportsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 746, Short.MAX_VALUE)
+        tabReports.setLayout(new java.awt.BorderLayout());
+
+        jLabel2.setText("Course");
+
+        cmbRepCourse.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        btnRepRefresh.setText("Refresh");
+        btnRepRefresh.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnRepRefreshActionPerformed(evt);
+            }
+        });
+
+        btnExportRoster.setText("Export Roster");
+        btnExportRoster.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnExportRosterActionPerformed(evt);
+            }
+        });
+
+        btnExportGrades.setText("Export Grades");
+
+        javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
+        jPanel5.setLayout(jPanel5Layout);
+        jPanel5Layout.setHorizontalGroup(
+            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel5Layout.createSequentialGroup()
+                .addGap(56, 56, 56)
+                .addComponent(jLabel2)
+                .addGap(18, 18, 18)
+                .addComponent(cmbRepCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(159, 159, 159)
+                .addComponent(btnRepRefresh)
+                .addGap(33, 33, 33)
+                .addComponent(btnExportRoster)
+                .addGap(29, 29, 29)
+                .addComponent(btnExportGrades)
+                .addContainerGap(49, Short.MAX_VALUE))
         );
-        tabReportsLayout.setVerticalGroup(
-            tabReportsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 478, Short.MAX_VALUE)
+        jPanel5Layout.setVerticalGroup(
+            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel5Layout.createSequentialGroup()
+                .addGap(21, 21, 21)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel2)
+                    .addComponent(cmbRepCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnRepRefresh)
+                    .addComponent(btnExportRoster)
+                    .addComponent(btnExportGrades))
+                .addContainerGap(59, Short.MAX_VALUE))
         );
+
+        tabReports.add(jPanel5, java.awt.BorderLayout.PAGE_START);
+
+        tblReport.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null},
+                {null, null, null, null}
+            },
+            new String [] {
+                "Title 1", "Title 2", "Title 3", "Title 4"
+            }
+        ));
+        jScrollPane5.setViewportView(tblReport);
+
+        tabReports.add(jScrollPane5, java.awt.BorderLayout.CENTER);
 
         tabs.addTab("Reports & Tuition", tabReports);
 
@@ -851,15 +919,26 @@ public class FacultyDashboard extends javax.swing.JPanel {
         // TODO add your handling code here:
     }//GEN-LAST:event_btnAutoFinalActionPerformed
 
+    private void btnExportRosterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnExportRosterActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnExportRosterActionPerformed
+
+    private void btnRepRefreshActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRepRefreshActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnRepRefreshActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnAddAssgn;
     private javax.swing.JButton btnAutoFinal;
     private javax.swing.JButton btnClassGpa;
     private javax.swing.JButton btnClose;
+    private javax.swing.JButton btnExportGrades;
+    private javax.swing.JButton btnExportRoster;
     private javax.swing.JButton btnLoadAssgn;
     private javax.swing.JButton btnOpen;
     private javax.swing.JButton btnRank;
+    private javax.swing.JButton btnRepRefresh;
     private javax.swing.JButton btnSave;
     private javax.swing.JButton btnSaveGrades;
     private javax.swing.JButton btnStuRefresh;
@@ -867,18 +946,22 @@ public class FacultyDashboard extends javax.swing.JPanel {
     private javax.swing.JButton btnUpload;
     private javax.swing.JButton btnViewProgress;
     private javax.swing.JComboBox<model.CourseOffering> cmbGradeCourse;
+    private javax.swing.JComboBox<model.CourseOffering> cmbRepCourse;
     private javax.swing.JComboBox<model.Semester> cmbSem;
     private javax.swing.JComboBox<model.CourseOffering> cmbStuCourse;
     private javax.swing.JTable courseTable;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
+    private javax.swing.JPanel jPanel5;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JScrollPane jScrollPane4;
+    private javax.swing.JScrollPane jScrollPane5;
     private javax.swing.JLabel lblCourse;
     private javax.swing.JLabel lblHeader;
     private javax.swing.JLabel lblSemester;
@@ -890,6 +973,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
     private javax.swing.JPanel tabStudents;
     private javax.swing.JTabbedPane tabs;
     private javax.swing.JTable tblGrades;
+    private javax.swing.JTable tblReport;
     private javax.swing.JTable tblStudents;
     // End of variables declaration//GEN-END:variables
 }
