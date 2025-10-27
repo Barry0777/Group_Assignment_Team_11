@@ -266,7 +266,47 @@ public class FacultyDashboard extends javax.swing.JPanel {
             loadAssignments();
         }
     }
-    private void initReportsTab()  { }
+    private void initReportsTab()  { 
+        reportModel = new javax.swing.table.DefaultTableModel(
+                new Object[]{"Student ID", "Name", "Email"}, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        tblReport.setModel(reportModel);
+        tblReport.setAutoCreateRowSorter(true);
+        tblReport.setFillsViewportHeight(true);
+
+        // 2) 课程下拉框
+        cmbRepCourse.removeAllItems();
+        if (me != null) {
+            for (model.CourseOffering co : me.getAssignedCourses()) {
+                cmbRepCourse.addItem(co);
+            }
+        }
+        // 友好显示：Title (ID) - Semester
+        cmbRepCourse.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(
+                    javax.swing.JList<?> list, Object value, int index,
+                    boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof model.CourseOffering co) {
+                    setText(co.getCourse().getTitle() + " (" + co.getCourse().getCourseId() + ") - " + co.getSemester());
+                }
+                return this;
+            }
+        });
+
+        // 3) 事件
+        btnRepRefresh.addActionListener(e -> loadReportRoster());
+        btnExportRoster.addActionListener(e -> exportRosterCsv());
+        btnExportGrades.addActionListener(e -> exportGradesCsv());
+
+        // 4) 首次加载
+        if (cmbRepCourse.getItemCount() > 0) {
+            cmbRepCourse.setSelectedIndex(0);
+            loadReportRoster();
+        }
+    }
     private void initProfileTab()  { }
     
     private void reloadStudents() {
@@ -520,6 +560,108 @@ public class FacultyDashboard extends javax.swing.JPanel {
             info(String.format("Class GPA: %.2f", gpa));
         } catch (IllegalArgumentException ex) { error(ex.getMessage()); }
     }
+    
+    
+    
+    
+    
+    private void loadReportRoster() {
+        reportModel.setRowCount(0);
+        var co = (model.CourseOffering) cmbRepCourse.getSelectedItem();
+        if (co == null) return;
+
+        try {
+            java.util.List<model.Student> list = fs.getEnrolledStudents(co);
+            for (var s : list) {
+                String name = s.getFirstName() + " " + s.getLastName();
+                reportModel.addRow(new Object[]{ s.getUniversityId(), name, s.getEmail() });
+            }
+        } catch (Exception ex) {
+            error(ex.getMessage());
+        }
+    }
+    
+    private void exportRosterCsv() {
+        if (reportModel.getRowCount() == 0) { info("No data to export."); return; }
+        var file = chooseCsvFile("roster");
+        if (file == null) return;
+
+        try (var w = new java.io.BufferedWriter(new java.io.FileWriter(file))) {
+            // header
+            w.write("Student ID,Name,Email");
+            w.newLine();
+            for (int r = 0; r < reportModel.getRowCount(); r++) {
+                String sid  = String.valueOf(reportModel.getValueAt(r, 0));
+                String name = String.valueOf(reportModel.getValueAt(r, 1));
+                String mail = String.valueOf(reportModel.getValueAt(r, 2));
+                w.write(csv(sid) + "," + csv(name) + "," + csv(mail));
+                w.newLine();
+            }
+            info("Roster exported.");
+        } catch (Exception ex) {
+            error(ex.getMessage());
+        }
+    }
+
+    private void exportGradesCsv() {
+        var co = cmbRepCourse.getSelectedItem() instanceof model.CourseOffering
+                ? (model.CourseOffering)cmbRepCourse.getSelectedItem() : null;
+        if (co == null) { info("Please select a course."); return; }
+
+        var file = chooseCsvFile("grades");
+        if (file == null) return;
+
+        try (var w = new java.io.BufferedWriter(new java.io.FileWriter(file))) {
+            w.write("Student ID,Name,Score,Letter");
+            w.newLine();
+
+            // 关键：这里一定是 List<Student>
+            java.util.List<model.Student> students = fs.getEnrolledStudents(co);
+
+            for (model.Student s : students) {
+                double pct = 0.0;
+                var prog = fs.getStudentProgress(s, co);
+                if (prog != null && prog.containsKey("percentage")) {
+                    Object o = prog.get("percentage");
+                    if (o instanceof Number n) pct = n.doubleValue();
+                    else pct = Double.parseDouble(String.valueOf(o));
+                }
+                String name = s.getFirstName() + " " + s.getLastName();
+                String letter = business.GradeCalculator.calculateLetterGrade(pct);
+
+                w.write(s.getUniversityId() + "," + name + "," + pct + "," + letter);
+                w.newLine();
+            }
+
+            info("Grades exported.");
+        } catch (Exception ex) {
+            error(ex.getMessage());
+        }
+    }
+
+    private java.io.File chooseCsvFile(String prefix) {
+        var fc = new javax.swing.JFileChooser();
+        fc.setDialogTitle("Save CSV");
+        fc.setSelectedFile(new java.io.File(prefix + ".csv"));
+        int ret = fc.showSaveDialog(this);
+        if (ret == javax.swing.JFileChooser.APPROVE_OPTION) {
+            var f = fc.getSelectedFile();
+            
+            if (!f.getName().toLowerCase().endsWith(".csv")) {
+                f = new java.io.File(f.getParentFile(), f.getName() + ".csv");
+            }
+            return f;
+        }
+        return null;
+    }
+
+    private String csv(String s) {
+        if (s == null) return "";
+        String t = s.replace("\"", "\"\"");
+        return "\"" + t + "\"";
+    }
+
+
 
 
 
@@ -827,8 +969,6 @@ public class FacultyDashboard extends javax.swing.JPanel {
         tabReports.setLayout(new java.awt.BorderLayout());
 
         jLabel2.setText("Course");
-
-        cmbRepCourse.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
         btnRepRefresh.setText("Refresh");
         btnRepRefresh.addActionListener(new java.awt.event.ActionListener() {
