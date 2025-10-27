@@ -440,11 +440,12 @@ public class FacultyDashboard extends javax.swing.JPanel {
         assignmentsModel.clear();
         var co = getSelectedCourse();
         if (co == null) return;
-        
-        for (model.Assignment a : co.getAssignments()) {
-            assignmentsModel.addElement(a);
-        }
-        if (!assignmentsModel.isEmpty()) {
+
+        java.util.List<model.Assignment> list = co.getAssignments();
+        for (var a : list) assignmentsModel.addElement(a);
+        for (var a : list) assignmentsModel.addElement(a);
+
+        if (!list.isEmpty()) {
             lstAssignments.setSelectedIndex(0);
         } else {
             gradesModel.setRowCount(0);
@@ -467,6 +468,8 @@ public class FacultyDashboard extends javax.swing.JPanel {
         } catch (IllegalArgumentException ex) {
             error(ex.getMessage());
         }
+        
+         
     }
 
     private model.Student findStudentById(model.CourseOffering co, String sid) {
@@ -943,6 +946,11 @@ public class FacultyDashboard extends javax.swing.JPanel {
         jLabel1.setText("Course");
 
         btnLoadAssgn.setText("Load");
+        btnLoadAssgn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnLoadAssgnActionPerformed(evt);
+            }
+        });
 
         btnAddAssgn.setText("New");
 
@@ -1017,15 +1025,15 @@ public class FacultyDashboard extends javax.swing.JPanel {
             jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel4Layout.createSequentialGroup()
                 .addGap(24, 24, 24)
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(25, Short.MAX_VALUE))
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 226, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(57, Short.MAX_VALUE))
         );
         jPanel4Layout.setVerticalGroup(
             jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel4Layout.createSequentialGroup()
                 .addGap(50, 50, 50)
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(250, Short.MAX_VALUE))
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 208, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(172, Short.MAX_VALUE))
         );
 
         tabGrading.add(jPanel4, java.awt.BorderLayout.LINE_START);
@@ -1091,7 +1099,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
                         .addComponent(btnExportGrades))
                     .addGroup(jPanel5Layout.createSequentialGroup()
                         .addGap(25, 25, 25)
-                        .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, 362, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap(62, Short.MAX_VALUE))
         );
         jPanel5Layout.setVerticalGroup(
@@ -1105,8 +1113,8 @@ public class FacultyDashboard extends javax.swing.JPanel {
                     .addComponent(btnExportRoster)
                     .addComponent(btnExportGrades))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, 51, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(15, Short.MAX_VALUE))
+                .addComponent(jScrollPane6, javax.swing.GroupLayout.DEFAULT_SIZE, 60, Short.MAX_VALUE)
+                .addContainerGap())
         );
 
         tabReports.add(jPanel5, java.awt.BorderLayout.PAGE_START);
@@ -1234,6 +1242,16 @@ public class FacultyDashboard extends javax.swing.JPanel {
             error(ex.getMessage());
         }
     }//GEN-LAST:event_btnProfSaveActionPerformed
+
+    private void btnLoadAssgnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLoadAssgnActionPerformed
+        // TODO add your handling code here:
+            loadAssignments();
+        
+        if (assignmentsModel.getSize() > 0) {
+            lstAssignments.setSelectedIndex(0);
+            loadGradesForSelectedAssignment();
+        }
+    }//GEN-LAST:event_btnLoadAssgnActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
