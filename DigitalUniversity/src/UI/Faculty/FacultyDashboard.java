@@ -25,6 +25,8 @@ public class FacultyDashboard extends javax.swing.JPanel {
     private javax.swing.table.DefaultTableModel gradesModel;
     
     private javax.swing.table.DefaultTableModel reportModel;
+    
+    
 
     public FacultyDashboard() {
         initComponents();
@@ -307,7 +309,17 @@ public class FacultyDashboard extends javax.swing.JPanel {
             loadReportRoster();
         }
     }
-    private void initProfileTab()  { }
+    private void initProfileTab()  { 
+        txtProfFirstName.setEditable(false);
+        txtProfLastName.setEditable(false);
+
+        if (me != null) {
+            txtProfFirstName.setText(me.getFirstName());
+            txtProfLastName.setText(me.getLastName());
+            txtProfEmail.setText(me.getEmail());
+            
+        }
+    }
     
     private void reloadStudents() {
         studentsModel.setRowCount(0);
@@ -664,7 +676,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
 
 
 
-
+    
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -721,6 +733,14 @@ public class FacultyDashboard extends javax.swing.JPanel {
         jScrollPane5 = new javax.swing.JScrollPane();
         tblReport = new javax.swing.JTable();
         tabProfile = new javax.swing.JPanel();
+        jPanel6 = new javax.swing.JPanel();
+        jLabel3 = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        txtProfFirstName = new javax.swing.JTextField();
+        txtProfLastName = new javax.swing.JTextField();
+        txtProfEmail = new javax.swing.JTextField();
+        btnProfSave = new javax.swing.JButton();
 
         setLayout(new java.awt.BorderLayout());
 
@@ -1035,16 +1055,68 @@ public class FacultyDashboard extends javax.swing.JPanel {
 
         tabs.addTab("Reports & Tuition", tabReports);
 
-        javax.swing.GroupLayout tabProfileLayout = new javax.swing.GroupLayout(tabProfile);
-        tabProfile.setLayout(tabProfileLayout);
-        tabProfileLayout.setHorizontalGroup(
-            tabProfileLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 746, Short.MAX_VALUE)
+        tabProfile.setLayout(new java.awt.BorderLayout());
+
+        jLabel3.setText("First Name");
+
+        jLabel4.setText("Last Name");
+
+        jLabel5.setText("Email");
+
+        txtProfFirstName.setEditable(false);
+
+        txtProfLastName.setEditable(false);
+
+        btnProfSave.setText("Save");
+        btnProfSave.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnProfSaveActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel6Layout = new javax.swing.GroupLayout(jPanel6);
+        jPanel6.setLayout(jPanel6Layout);
+        jPanel6Layout.setHorizontalGroup(
+            jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel6Layout.createSequentialGroup()
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel6Layout.createSequentialGroup()
+                        .addGap(151, 151, 151)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel3)
+                            .addComponent(jLabel4)
+                            .addComponent(jLabel5))
+                        .addGap(73, 73, 73)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(txtProfEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(txtProfLastName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(txtProfFirstName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(jPanel6Layout.createSequentialGroup()
+                        .addGap(209, 209, 209)
+                        .addComponent(btnProfSave)))
+                .addContainerGap(395, Short.MAX_VALUE))
         );
-        tabProfileLayout.setVerticalGroup(
-            tabProfileLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 478, Short.MAX_VALUE)
+        jPanel6Layout.setVerticalGroup(
+            jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel6Layout.createSequentialGroup()
+                .addGap(33, 33, 33)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel3)
+                    .addComponent(txtProfFirstName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel4)
+                    .addComponent(txtProfLastName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel5)
+                    .addComponent(txtProfEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(59, 59, 59)
+                .addComponent(btnProfSave)
+                .addContainerGap(264, Short.MAX_VALUE))
         );
+
+        tabProfile.add(jPanel6, java.awt.BorderLayout.CENTER);
 
         tabs.addTab("My Profile", tabProfile);
 
@@ -1067,6 +1139,29 @@ public class FacultyDashboard extends javax.swing.JPanel {
         // TODO add your handling code here:
     }//GEN-LAST:event_btnRepRefreshActionPerformed
 
+    private void btnProfSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnProfSaveActionPerformed
+        
+        try {
+            String email = txtProfEmail.getText().trim();
+
+            if (!utility.ValidationUtility.isNotEmpty(email)) {
+                info("Email cannot be empty.");
+                return;
+            }
+            if (!email.matches("^[\\w+.-]+@[\\w.-]+\\.[A-Za-z]{2,5}$")) {
+                info("Invalid email format.");
+                return;
+            }
+
+            // update model
+            me.setEmail(email);
+
+            info("Profile saved.");
+        } catch (Exception ex) {
+            error(ex.getMessage());
+        }
+    }//GEN-LAST:event_btnProfSaveActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnAddAssgn;
@@ -1077,6 +1172,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
     private javax.swing.JButton btnExportRoster;
     private javax.swing.JButton btnLoadAssgn;
     private javax.swing.JButton btnOpen;
+    private javax.swing.JButton btnProfSave;
     private javax.swing.JButton btnRank;
     private javax.swing.JButton btnRepRefresh;
     private javax.swing.JButton btnSave;
@@ -1092,11 +1188,15 @@ public class FacultyDashboard extends javax.swing.JPanel {
     private javax.swing.JTable courseTable;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
+    private javax.swing.JPanel jPanel6;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;
@@ -1115,5 +1215,8 @@ public class FacultyDashboard extends javax.swing.JPanel {
     private javax.swing.JTable tblGrades;
     private javax.swing.JTable tblReport;
     private javax.swing.JTable tblStudents;
+    private javax.swing.JTextField txtProfEmail;
+    private javax.swing.JTextField txtProfFirstName;
+    private javax.swing.JTextField txtProfLastName;
     // End of variables declaration//GEN-END:variables
 }
