@@ -343,13 +343,13 @@ private String generateUniversityId() {
             model.addRow(new Object[]{"Total Enrollments", directory.getEnrollments().size()});
 
             // 假設 TuitionPayment 已實作
-            //double totalPaid = 0.0;
-            //for (Student s : directory.getStudents()) {
-           //     for (TuitionPayment t : s.getPayments()) {
-            //        totalPaid += t.getAmount();
-           //     }
-           // }
-           // model.addRow(new Object[]{"💰 Total Tuition Paid", String.format("$%.2f", totalPaid)});
+//            double totalPaid = 0.0;
+//            for (Student s : directory.getStudents()) {
+//                for (TuitionPayment t : s.getPayments()) {
+//                    totalPaid += t.getAmount();
+//                }
+//            }
+//            model.addRow(new Object[]{"💰 Total Tuition Paid", String.format("$%.2f", totalPaid)});
         });
 
         panel.add(title, BorderLayout.NORTH);

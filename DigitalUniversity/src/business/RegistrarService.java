@@ -160,11 +160,8 @@ public class RegistrarService {
         
         // Add enrollment
         directory.addEnrollment(enrollment);
-        student.addEnrollment(enrollment);
+        student.addEnrollment(enrollment); // This now adds tuition to balance automatically
         offering.addEnrollment(enrollment);
-        
-        // Add tuition to balance
-        student.setAccountBalance(student.getAccountBalance() + enrollment.getTuitionAmount());
         
         return enrollment;
     }
@@ -192,25 +189,29 @@ public class RegistrarService {
         
         // Mark as inactive
         enrollment.setActive(false);
+        enrollment.setDropDate(LocalDate.now());
         
         // Remove from offering
         offering.removeEnrollment(enrollment);
         
         // Refund tuition if paid
         if (enrollment.isPaid()) {
-            double refundAmount = enrollment.getTuitionAmount();
-            student.setAccountBalance(student.getAccountBalance() - refundAmount);
+            student.refundEnrollment(enrollment);
             
-            // Create refund payment
+            // Create refund payment record
             String paymentId = directory.generatePaymentId();
             TuitionPayment refund = new TuitionPayment(
                 paymentId,
                 student,
-                -refundAmount,
-                offering.getSemester().getFullName()
+                enrollment,
+                enrollment.getTuitionAmount()
             );
             refund.setDescription("Refund for dropping " + offering.getCourse().getCourseId());
+            refund.setAmount(-enrollment.getTuitionAmount()); // Negative for refund
             student.addPayment(refund);
+        } else {
+            // Just remove the tuition charge
+            student.setAccountBalance(student.getAccountBalance() - enrollment.getTuitionAmount());
         }
         
         return true;
@@ -227,8 +228,8 @@ public class RegistrarService {
         for (Student student : directory.getStudents()) {
             HashMap<String, Object> status = new HashMap<>();
             status.put("student", student);
-            status.put("balance", student.getAccountBalance());
-            status.put("isPaid", student.getAccountBalance() <= 0);
+            status.put("balance", student.calculateUnpaidBalance());
+            status.put("isPaid", student.calculateUnpaidBalance() <= 0);
             
             statusList.add(status);
         }
@@ -283,7 +284,7 @@ public class RegistrarService {
         ArrayList<Student> unpaidStudents = new ArrayList<>();
         
         for (Student student : directory.getStudents()) {
-            if (student.getAccountBalance() > 0) {
+            if (student.calculateUnpaidBalance() > 0) {
                 unpaidStudents.add(student);
             }
         }

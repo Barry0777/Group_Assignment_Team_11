@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public class TuitionPayment {
     private String paymentId;
     private Student student;
+    private Enrollment enrollment;
     private double amount;
     private LocalDateTime paymentDate;
     private String paymentMethod; // e.g., "Credit Card", "Bank Transfer"
@@ -16,13 +17,15 @@ public class TuitionPayment {
     private String description;
     
     // Constructor
-    public TuitionPayment(String paymentId, Student student, double amount, String semester) {
+    public TuitionPayment(String paymentId, Student student, Enrollment enrollment, double amount) {
         this.paymentId = paymentId;
         this.student = student;
+        this.enrollment = enrollment;
         this.amount = amount;
         this.paymentDate = LocalDateTime.now();
-        this.semester = semester;
+        this.semester = enrollment.getCourseOffering().getSemester().getFullName();
         this.paymentMethod = "Online Payment";
+        this.description = "Tuition for " + enrollment.getCourseOffering().getCourse().getCourseId();
     }
     
     // Getters and Setters
@@ -40,6 +43,14 @@ public class TuitionPayment {
     
     public void setStudent(Student student) {
         this.student = student;
+    }
+    
+    public Enrollment getEnrollment() {
+        return enrollment;
+    }
+    
+    public void setEnrollment(Enrollment enrollment) {
+        this.enrollment = enrollment;
     }
     
     public double getAmount() {
@@ -85,6 +96,6 @@ public class TuitionPayment {
     @Override
     public String toString() {
         return "Payment " + paymentId + " - $" + String.format("%.2f", amount) + 
-               " (" + paymentDate.toString() + ")";
+               " (" + paymentDate.toString() + ") - " + description;
     }
 }

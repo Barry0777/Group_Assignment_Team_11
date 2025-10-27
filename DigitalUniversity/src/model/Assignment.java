@@ -1,5 +1,4 @@
 package model;
-
 import java.time.LocalDate;
 import java.util.HashMap;
 
@@ -16,13 +15,20 @@ public class Assignment {
     private double maxPoints;
     private HashMap<Student, Double> submissions; // Student -> score mapping
     
-    // Constructor
-    public Assignment(String assignmentId, String title, CourseOffering courseOffering, double maxPoints) {
-        this.assignmentId = assignmentId;
+    // Updated Constructor to match the createAssignment call
+    public Assignment(String title, String description, CourseOffering courseOffering, double maxPoints) {
+        this.assignmentId = generateAssignmentId(); // Auto-generate ID
         this.title = title;
+        this.description = description;
         this.courseOffering = courseOffering;
         this.maxPoints = maxPoints;
         this.submissions = new HashMap<>();
+    }
+    
+    // Helper method to generate unique assignment IDs
+    private static int assignmentCounter = 1000;
+    private String generateAssignmentId() {
+        return "ASSGN-" + (assignmentCounter++);
     }
     
     // Getters and Setters

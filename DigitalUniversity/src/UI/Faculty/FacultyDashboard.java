@@ -1,13 +1,18 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
- */
 package UI.Faculty;
 
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.*;
+import java.time.LocalDate;
+import java.util.*;
+import model.*;
+import business.*;
+import utility.ValidationUtility;
 
 /**
- *
- * @author 123
+ * Complete Faculty Dashboard Implementation
+ * @author Faculty Use Case
  */
 public class FacultyDashboard extends javax.swing.JPanel {
     
@@ -26,11 +31,42 @@ public class FacultyDashboard extends javax.swing.JPanel {
     
     private javax.swing.table.DefaultTableModel reportModel;
     
+    // UI Components
+    private JTabbedPane tabs;
+    private JPanel tabCourses, tabStudents, tabGrading, tabReports, tabProfile;
     
+    // Course Management Components
+    private JTable courseTable;
+    private JComboBox<Semester> cmbSem;
+    private JButton btnSave, btnOpen, btnClose, btnUpload;
+    
+    // Student Management Components
+    private JTable tblStudents;
+    private JComboBox<CourseOffering> cmbStuCourse;
+    private JButton btnStuRefresh, btnViewProgress, btnTranscript, btnRank;
+    private JLabel lblTuitionCollected;
+    
+    // Grading Components
+    private JComboBox<CourseOffering> cmbGradeCourse;
+    private JList<Assignment> lstAssignments;
+    private JTable tblGrades;
+    private JButton btnLoadAssgn, btnAddAssgn, btnSaveGrades, btnAutoFinal, btnClassGpa;
+    
+    // Reports Components
+    private JComboBox<CourseOffering> cmbRepCourse;
+    private JComboBox<Semester> cmbRepSemester;
+    private JTextArea txtReport;
+    private JTable tblReport;
+    private JButton btnRepRefresh;
+    
+    // Profile Components
+    private JTextField txtProfFirstName, txtProfLastName, txtProfEmail;
+    private JButton btnProfSave;
+    
+    private JLabel lblHeader;
 
     public FacultyDashboard() {
         initComponents();
-       
     }
     
     public FacultyDashboard(model.Faculty me) {  
@@ -50,10 +86,12 @@ public class FacultyDashboard extends javax.swing.JPanel {
         initProfileTab();
     }
     
+    // ==================== COURSE MANAGEMENT TAB ====================
+    
     private void initCoursesTab() {
         courseModel = new javax.swing.table.DefaultTableModel(
-        new Object[]{"Course#", "Title", "Description", "Room/Time", "Capacity", "Open?", "Syllabus"}, 0) {
-        @Override public boolean isCellEditable(int r, int c) { return c==1||c==2||c==3||c==4||c==6; }
+            new Object[]{"Course#", "Title", "Description", "Room/Time", "Capacity", "Open?", "Syllabus"}, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return c==1||c==2||c==3||c==4||c==6; }
         };
         courseTable.setModel(courseModel);
         courseTable.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
@@ -62,7 +100,6 @@ public class FacultyDashboard extends javax.swing.JPanel {
 
         cmbSem.removeAllItems();
         for (model.Semester s : dir.getSemesters()) cmbSem.addItem(s);
-        model.Semester sem = (model.Semester) cmbSem.getSelectedItem();
 
         cmbSem.addActionListener(e -> loadCourses());
         btnSave.addActionListener(e -> saveCourses());
@@ -80,21 +117,22 @@ public class FacultyDashboard extends javax.swing.JPanel {
         if (sem == null || me == null) return;
         try {
             current = new java.util.ArrayList<>();
-            for (var co : me.getAssignedCourses()) if (sem.equals(co.getSemester())) current.add(co);
+            for (var co : me.getAssignedCourses()) {
+                if (sem.equals(co.getSemester())) current.add(co);
+            }
             for (var co : current) {
                 courseModel.addRow(new Object[]{
                     co.getCourse().getCourseId(),  
                     co.getCourse().getTitle(),   
                     co.getCourse().getDescription(),  
-                    co.getRoomLocation(),           
+                    co.getRoomLocation() + " - " + co.getSchedule(),           
                     co.getMaxCapacity(),             
-                    co.isEnrollmentOpen(),
+                    co.isEnrollmentOpen() ? "Yes" : "No",
                     co.getSyllabus() == null ? "" : co.getSyllabus() 
                 });
             }
-        } catch (IllegalArgumentException ex) {
-            javax.swing.JOptionPane.showMessageDialog(this, ex.getMessage(), "Load Error",
-                    javax.swing.JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            error("Error loading courses: " + ex.getMessage());
         }
     }
 
@@ -102,1214 +140,939 @@ public class FacultyDashboard extends javax.swing.JPanel {
         for (int r=0; r<courseModel.getRowCount(); r++) {
             try {
                 model.CourseOffering co = current.get(r);
-                String title    = String.valueOf(courseModel.getValueAt(r,1)).trim();
-                String desc     = String.valueOf(courseModel.getValueAt(r,2)).trim();
+                String title = String.valueOf(courseModel.getValueAt(r,1)).trim();
+                String desc = String.valueOf(courseModel.getValueAt(r,2)).trim();
                 String room = String.valueOf(courseModel.getValueAt(r,3)).trim();
-                String capStr   = String.valueOf(courseModel.getValueAt(r,4)).trim();
+                String capStr = String.valueOf(courseModel.getValueAt(r,4)).trim();
                 String syllabus = String.valueOf(courseModel.getValueAt(r,6)).trim();
 
-                if (!utility.ValidationUtility.isNotEmpty(title) || !utility.ValidationUtility.isNotEmpty(room))
+                if (!ValidationUtility.isNotEmpty(title) || !ValidationUtility.isNotEmpty(room))
                     throw new IllegalArgumentException("Title and Room cannot be empty.");
-                if (!utility.ValidationUtility.isValidInteger(capStr) || Integer.parseInt(capStr) <= 0)
+                if (!ValidationUtility.isValidInteger(capStr) || Integer.parseInt(capStr) <= 0)
                     throw new IllegalArgumentException("Capacity must be a positive integer.");
 
                 co.getCourse().setTitle(title);
                 co.getCourse().setDescription(desc);
                 co.setRoomLocation(room);
                 co.setMaxCapacity(Integer.parseInt(capStr));
-                if (utility.ValidationUtility.isNotEmpty(syllabus)) 
-                co.setSyllabus(syllabus);
-            }
-                
-            catch (IllegalArgumentException ex) {
-                javax.swing.JOptionPane.showMessageDialog(this, "Row "+(r+1)+" ：" + ex.getMessage(),
-                        "Save Error", javax.swing.JOptionPane.ERROR_MESSAGE);
+                if (ValidationUtility.isNotEmpty(syllabus)) 
+                    co.setSyllabus(syllabus);
+            } catch (Exception ex) {
+                error("Row "+(r+1)+" error: " + ex.getMessage());
                 return;
             }
         }
-        javax.swing.JOptionPane.showMessageDialog(this, "Saved successfully.");
+        info("Courses saved successfully!");
         loadCourses();
     }
 
     private void toggleEnrollment(boolean open) {
         int row = courseTable.getSelectedRow();
-        if (row < 0) { javax.swing.JOptionPane.showMessageDialog(this, "Please select a course first."); return; }
+        if (row < 0) { 
+            info("Please select a course first."); 
+            return; 
+        }
         try {
             var co = current.get(row);
-            if (open) fs.openEnrollment(co); else fs.closeEnrollment(co);
-            javax.swing.JOptionPane.showMessageDialog(this, (open ? "Enrollment has been opened for this course." : "Enrollment has been closed for this course") );
+            if (open) fs.openEnrollment(co); 
+            else fs.closeEnrollment(co);
+            info(open ? "Enrollment opened." : "Enrollment closed.");
             loadCourses();
-        } catch (IllegalArgumentException ex) {
-            javax.swing.JOptionPane.showMessageDialog(this, ex.getMessage(), "Action Error",
-                    javax.swing.JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            error(ex.getMessage());
         }
     }
 
     private void chooseSyllabus() {
         int row = courseTable.getSelectedRow();
-        if (row < 0) { javax.swing.JOptionPane.showMessageDialog(this, "Please select a course first."); return; }
+        if (row < 0) { 
+            info("Please select a course first."); 
+            return; 
+        }
         var fc = new javax.swing.JFileChooser();
         fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("PDF/DOC", "pdf","doc","docx"));
         if (fc.showOpenDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
             courseModel.setValueAt(fc.getSelectedFile().getAbsolutePath(), row, 6);
         }
     }
+    
+    // ==================== STUDENT MANAGEMENT TAB ====================
+    
     private void initStudentsTab() {
-        studentsModel = (javax.swing.table.DefaultTableModel) tblStudents.getModel();
-        studentsModel.setRowCount(0);
+        String[] cols = {"Rank", "Student ID", "Name", "Email", "Grade %", "Letter Grade"};
+        studentsModel = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        tblStudents.setModel(studentsModel);
+        tblStudents.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         cmbStuCourse.removeAllItems();
         if (me != null) {
-            for (model.CourseOffering co : me.getAssignedCourses()) {
+            for (CourseOffering co : me.getAssignedCourses()) {
                 cmbStuCourse.addItem(co);
             }
         }
 
-        cmbStuCourse.setRenderer(new javax.swing.DefaultListCellRenderer() {
+        cmbStuCourse.setRenderer(new DefaultListCellRenderer() {
             @Override
-            public java.awt.Component getListCellRendererComponent(
-                javax.swing.JList<?> list, Object value, int index,
-                boolean isSelected, boolean cellHasFocus) {
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                    boolean isSelected, boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof model.CourseOffering co) {
-                    setText(co.getCourse().getTitle() + " (" + co.getCourse().getCourseId() + ") - " + co.getSemester());
+                if (value instanceof CourseOffering) {
+                    CourseOffering co = (CourseOffering) value;
+                    setText(co.getCourse().getCourseId() + " - " + co.getCourse().getTitle());
                 }
                 return this;
             }
         });
 
-        java.awt.event.ActionListener reload = e -> reloadStudents();
-        cmbStuCourse.addActionListener(reload);
-        btnStuRefresh.addActionListener(reload);
-        btnViewProgress.addActionListener(e -> showProgress());
-        btnTranscript.addActionListener(e -> showTranscript());
+        btnStuRefresh.addActionListener(e -> loadStudents());
+        btnViewProgress.addActionListener(e -> viewStudentProgress());
+        btnTranscript.addActionListener(e -> viewStudentTranscript());
+        btnRank.addActionListener(e -> rankStudents());
 
         if (cmbStuCourse.getItemCount() > 0) {
             cmbStuCourse.setSelectedIndex(0);
-            reloadStudents();
+            loadStudents();
         }
     }
-    private void initGradingTab()  {
+
+    private void loadStudents() {
+        studentsModel.setRowCount(0);
+        CourseOffering selected = (CourseOffering) cmbStuCourse.getSelectedItem();
+        if (selected == null) return;
+
+        ArrayList<Student> students = fs.getEnrolledStudents(selected);
         
+        for (Student s : students) {
+            double percentage = GradeCalculator.calculateCoursePercentage(s, selected);
+            String letterGrade = GradeCalculator.calculateLetterGrade(percentage);
+            
+            studentsModel.addRow(new Object[]{
+                "", // Rank - will be filled when ranking
+                s.getUniversityId(),
+                s.getFullName(),
+                s.getEmail(),
+                String.format("%.2f%%", percentage),
+                letterGrade
+            });
+        }
+        
+        // Update tuition collected
+        double tuition = fs.getTotalTuitionCollected(selected);
+        if (lblTuitionCollected != null) {
+            lblTuitionCollected.setText("Total Tuition Collected: $" + String.format("%.2f", tuition));
+        }
+    }
+
+    private void viewStudentProgress() {
+        int row = tblStudents.getSelectedRow();
+        if (row < 0) {
+            info("Please select a student first.");
+            return;
+        }
+        
+        CourseOffering selected = (CourseOffering) cmbStuCourse.getSelectedItem();
+        String studentId = (String) studentsModel.getValueAt(row, 1);
+        Student student = dir.findStudentByUniversityId(studentId);
+        
+        if (student == null || selected == null) return;
+        
+        // Create progress dialog
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), 
+            "Student Progress - " + student.getFullName(), true);
+        dialog.setLayout(new BorderLayout(10, 10));
+        dialog.setSize(600, 400);
+        
+        // Header info
+        JPanel headerPanel = new JPanel(new GridLayout(4, 2, 5, 5));
+        headerPanel.setBorder(BorderFactory.createTitledBorder("Student Information"));
+        headerPanel.add(new JLabel("Student ID:"));
+        headerPanel.add(new JLabel(student.getUniversityId()));
+        headerPanel.add(new JLabel("Name:"));
+        headerPanel.add(new JLabel(student.getFullName()));
+        headerPanel.add(new JLabel("Course:"));
+        headerPanel.add(new JLabel(selected.getCourse().getCourseId() + " - " + selected.getCourse().getTitle()));
+        headerPanel.add(new JLabel("Overall GPA:"));
+        headerPanel.add(new JLabel(String.format("%.2f", student.getOverallGPA())));
+        
+        // Assignment progress table
+        String[] cols = {"Assignment", "Max Points", "Your Score", "Percentage"};
+        DefaultTableModel progressModel = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable progressTable = new JTable(progressModel);
+        
+        ArrayList<Assignment> assignments = selected.getAssignments();
+        double totalScore = 0, maxScore = 0;
+        
+        for (Assignment a : assignments) {
+            Double score = a.getStudentScore(student);
+            if (score != null) {
+                totalScore += score;
+            }
+            maxScore += a.getMaxPoints();
+            
+            progressModel.addRow(new Object[]{
+                a.getTitle(),
+                a.getMaxPoints(),
+                score != null ? String.format("%.2f", score) : "Not Graded",
+                score != null ? String.format("%.1f%%", (score / a.getMaxPoints()) * 100) : "N/A"
+            });
+        }
+        
+        // Summary
+        JPanel summaryPanel = new JPanel(new GridLayout(2, 2, 5, 5));
+        summaryPanel.setBorder(BorderFactory.createTitledBorder("Course Summary"));
+        summaryPanel.add(new JLabel("Total Score:"));
+        summaryPanel.add(new JLabel(String.format("%.2f / %.2f", totalScore, maxScore)));
+        summaryPanel.add(new JLabel("Course Percentage:"));
+        double percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+        summaryPanel.add(new JLabel(String.format("%.2f%% (%s)", percentage, 
+            GradeCalculator.calculateLetterGrade(percentage))));
+        
+        dialog.add(headerPanel, BorderLayout.NORTH);
+        dialog.add(new JScrollPane(progressTable), BorderLayout.CENTER);
+        dialog.add(summaryPanel, BorderLayout.SOUTH);
+        
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void viewStudentTranscript() {
+        int row = tblStudents.getSelectedRow();
+        if (row < 0) {
+            info("Please select a student first.");
+            return;
+        }
+        
+        String studentId = (String) studentsModel.getValueAt(row, 1);
+        Student student = dir.findStudentByUniversityId(studentId);
+        
+        if (student == null) return;
+        
+        // Create transcript dialog
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), 
+            "Transcript - " + student.getFullName(), true);
+        dialog.setLayout(new BorderLayout(10, 10));
+        dialog.setSize(800, 500);
+        
+        // Student info
+        JPanel infoPanel = new JPanel(new GridLayout(4, 2, 5, 5));
+        infoPanel.setBorder(BorderFactory.createTitledBorder("Student Information"));
+        infoPanel.add(new JLabel("Student ID:"));
+        infoPanel.add(new JLabel(student.getUniversityId()));
+        infoPanel.add(new JLabel("Name:"));
+        infoPanel.add(new JLabel(student.getFullName()));
+        infoPanel.add(new JLabel("Program:"));
+        infoPanel.add(new JLabel(student.getProgram()));
+        infoPanel.add(new JLabel("Overall GPA:"));
+        infoPanel.add(new JLabel(String.format("%.2f", student.getOverallGPA())));
+        
+        // Transcript table
+        String[] cols = {"Semester", "Course ID", "Course Title", "Credits", "Grade", "Grade Points"};
+        DefaultTableModel transcriptModel = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable transcriptTable = new JTable(transcriptModel);
+        
+        for (Enrollment e : student.getEnrollments()) {
+            if (e.getGrade() != null) {
+                transcriptModel.addRow(new Object[]{
+                    e.getCourseOffering().getSemester().getFullName(),
+                    e.getCourseOffering().getCourse().getCourseId(),
+                    e.getCourseOffering().getCourse().getTitle(),
+                    e.getCourseOffering().getCourse().getCreditHours(),
+                    e.getGrade(),
+                    String.format("%.2f", e.getGradePoints())
+                });
+            }
+        }
+        
+        dialog.add(infoPanel, BorderLayout.NORTH);
+        dialog.add(new JScrollPane(transcriptTable), BorderLayout.CENTER);
+        
+        JButton closeBtn = new JButton("Close");
+        closeBtn.addActionListener(e -> dialog.dispose());
+        JPanel btnPanel = new JPanel();
+        btnPanel.add(closeBtn);
+        dialog.add(btnPanel, BorderLayout.SOUTH);
+        
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void rankStudents() {
+        CourseOffering selected = (CourseOffering) cmbStuCourse.getSelectedItem();
+        if (selected == null) return;
+        
+        ArrayList<HashMap<String, Object>> rankings = fs.rankStudentsByGrade(selected);
+        
+        studentsModel.setRowCount(0);
+        int rank = 1;
+        for (HashMap<String, Object> entry : rankings) {
+            Student s = (Student) entry.get("student");
+            double percentage = (double) entry.get("percentage");
+            String grade = (String) entry.get("grade");
+            if (grade == null) grade = GradeCalculator.calculateLetterGrade(percentage);
+            
+            studentsModel.addRow(new Object[]{
+                rank++,
+                s.getUniversityId(),
+                s.getFullName(),
+                s.getEmail(),
+                String.format("%.2f%%", percentage),
+                grade
+            });
+        }
+        
+        info("Students ranked by grade percentage!");
+    }
+    
+    // ==================== GRADING TAB ====================
+    
+    private void initGradingTab() {
+        assignmentsModel = new DefaultListModel<>();
+        lstAssignments.setModel(assignmentsModel);
+        
+        String[] cols = {"Student ID", "Student Name", "Score", "Max Points", "Percentage"};
+        gradesModel = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return c == 2; } // Only score editable
+        };
+        tblGrades.setModel(gradesModel);
+
         cmbGradeCourse.removeAllItems();
         if (me != null) {
-            for (model.CourseOffering co : me.getAssignedCourses()) {
+            for (CourseOffering co : me.getAssignedCourses()) {
                 cmbGradeCourse.addItem(co);
             }
         }
+
+        cmbGradeCourse.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                    boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof CourseOffering) {
+                    CourseOffering co = (CourseOffering) value;
+                    setText(co.getCourse().getCourseId() + " - " + co.getCourse().getTitle());
+                }
+                return this;
+            }
+        });
+
+        btnLoadAssgn.addActionListener(e -> {
+            loadAssignments();
+            if (assignmentsModel.getSize() > 0) {
+                lstAssignments.setSelectedIndex(0);
+                loadGradesForSelectedAssignment();
+            }
+        });
         
-        cmbGradeCourse.setRenderer(new javax.swing.DefaultListCellRenderer() {
-            @Override
-            public java.awt.Component getListCellRendererComponent(
-                    javax.swing.JList<?> list, Object value, int index,
-                    boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof model.CourseOffering co) {
-                    setText(co.getCourse().getTitle() + " (" + co.getCourse().getCourseId() + ") - " + co.getSemester());
-                }
-                return this;
-            }
-        });
-
-        assignmentsModel = new javax.swing.DefaultListModel<>();
-        lstAssignments.setModel(assignmentsModel);
-        lstAssignments.setCellRenderer(new javax.swing.DefaultListCellRenderer() {
-            @Override
-            public java.awt.Component getListCellRendererComponent(
-                    javax.swing.JList<?> list, Object value, int index,
-                    boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof model.Assignment a) {
-                    setText(a.getTitle() + " (max " + a.getMaxPoints() + ")");
-                }
-                return this;
-            }
-        });
-
-        gradesModel = new javax.swing.table.DefaultTableModel(
-                new Object[]{"Student ID", "Name", "Score", "Letter"}, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return c == 2; }
-        };
-        tblGrades.setModel(gradesModel);
-        tblGrades.setAutoCreateRowSorter(true);
-        tblGrades.setFillsViewportHeight(true);
-
-        gradesModel.addTableModelListener(e -> {
-            if (e.getColumn() == 2 && e.getFirstRow() >= 0) {
-                int r = e.getFirstRow();
-                var asg = lstAssignments.getSelectedValue();
-                var scoreStr = String.valueOf(gradesModel.getValueAt(r, 2)).trim();
-                if (asg != null && utility.ValidationUtility.isInteger(scoreStr)) {
-                    int score = Integer.parseInt(scoreStr);
-                    double pct = score * 100.0 / asg.getMaxPoints();
-                    gradesModel.setValueAt(business.GradeCalculator.calculateLetterGrade(pct), r, 3);
-                } else {
-                    gradesModel.setValueAt("", r, 3);
-                }
-            }
-        });
-
-        java.awt.event.ActionListener reloadAssignments = e -> loadAssignments();
-        cmbGradeCourse.addActionListener(reloadAssignments);
-        btnLoadAssgn.addActionListener(reloadAssignments);
-
-        lstAssignments.addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) loadGradesForSelectedAssignment();
-        });
-
-        btnAddAssgn.addActionListener(e -> newAssignment());
+        btnAddAssgn.addActionListener(e -> createNewAssignment());
         btnSaveGrades.addActionListener(e -> saveGrades());
-        btnAutoFinal.addActionListener(e -> autoFinalGrade());
-        btnRank.addActionListener(e -> showRanking());
-        btnClassGpa.addActionListener(e -> showClassGpa());
+        btnAutoFinal.addActionListener(e -> autoComputeFinalGrades());
+        btnClassGpa.addActionListener(e -> showClassGPA());
+        
+        lstAssignments.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                loadGradesForSelectedAssignment();
+            }
+        });
 
         if (cmbGradeCourse.getItemCount() > 0) {
             cmbGradeCourse.setSelectedIndex(0);
             loadAssignments();
         }
     }
-    private void initReportsTab()  { 
-        reportModel = new javax.swing.table.DefaultTableModel(
-                new Object[]{"Student ID", "Name", "Email"}, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
-        };
-        tblReport.setModel(reportModel);
-        tblReport.setAutoCreateRowSorter(true);
-        tblReport.setFillsViewportHeight(true);
-
-        cmbRepCourse.removeAllItems();
-        if (me != null) {
-            for (model.CourseOffering co : me.getAssignedCourses()) {
-                cmbRepCourse.addItem(co);
-            }
-        }
-        
-        cmbRepCourse.setRenderer(new javax.swing.DefaultListCellRenderer() {
-            @Override
-            public java.awt.Component getListCellRendererComponent(
-                    javax.swing.JList<?> list, Object value, int index,
-                    boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof model.CourseOffering co) {
-                    setText(co.getCourse().getTitle() + " (" + co.getCourse().getCourseId() + ") - " + co.getSemester());
-                }
-                return this;
-            }
-        });
-
-        btnRepRefresh.addActionListener(e -> loadReportRoster());
-        btnExportRoster.addActionListener(e -> exportRosterCsv());
-        btnExportGrades.addActionListener(e -> exportGradesCsv());
-
-        if (cmbRepCourse.getItemCount() > 0) {
-            cmbRepCourse.setSelectedIndex(0);
-            loadReportRoster();
-        }
-        
-        
-        txtReport.setEditable(false);
-        txtReport.setFont(new java.awt.Font("Monospaced", 0, 12));
-
-        cmbRepCourse.addActionListener(e -> { showReportSummary(); showTuitionTotalEstimated(); });
-        btnRepRefresh.addActionListener(e -> { showReportSummary(); showTuitionTotalEstimated(); });
-
-        if (cmbRepCourse.getItemCount() > 0) {
-            cmbRepCourse.setSelectedIndex(0);
-            showReportSummary();
-            showTuitionTotalEstimated();
-        }
-
-    }
-    private void initProfileTab()  { 
-        txtProfFirstName.setEditable(false);
-        txtProfLastName.setEditable(false);
-
-        if (me != null) {
-            txtProfFirstName.setText(me.getFirstName());
-            txtProfLastName.setText(me.getLastName());
-            txtProfEmail.setText(me.getEmail());
-            
-        }
-    }
-    
-    private void reloadStudents() {
-        studentsModel.setRowCount(0);
-        model.CourseOffering co = (model.CourseOffering) cmbStuCourse.getSelectedItem();
-        if (co == null) return;
-        try {
-            java.util.List<model.Student> list = fs.getEnrolledStudents(co);
-            for (model.Student s : list) {
-                var prog = fs.getStudentProgress(s, co);
-                double pct = (double) prog.get("percentage");              // 0-100
-                String letter = business.GradeCalculator.calculateLetterGrade(pct);
-                studentsModel.addRow(new Object[]{
-                    s.getUniversityId(),
-                    s.getFirstName() + " " + s.getLastName(),
-                    s.getEmail(),
-                    String.format("%.2f", pct),
-                    letter
-                });
-            }
-        } catch (IllegalArgumentException ex) { error(ex.getMessage()); }
-    }
-
-    private model.Student getSelectedStudent() {
-        int row = tblStudents.getSelectedRow();
-        if (row < 0) return null;
-        String sid = String.valueOf(studentsModel.getValueAt(row, 0));
-        model.CourseOffering co = (model.CourseOffering) cmbStuCourse.getSelectedItem();
-        if (co == null) return null;
-        for (model.Student s : fs.getEnrolledStudents(co)) {
-            if (sid.equals(s.getUniversityId())) return s;
-        }
-        return null;
-    }
-
-    private void showProgress() {
-        model.CourseOffering co = (model.CourseOffering) cmbStuCourse.getSelectedItem();
-        model.Student s = getSelectedStudent();
-        if (co == null || s == null) { info("Please select a student row."); return; }
-        try {
-            var prog = fs.getStudentProgress(s, co);
-            double pct = (double) prog.get("percentage");
-            String letter = business.GradeCalculator.calculateLetterGrade(pct);
-            javax.swing.JTextArea ta = new javax.swing.JTextArea(
-                s.getFirstName()+" "+s.getLastName()+"\n"+
-                "Progress: "+String.format("%.2f", pct)+"% ("+letter+")", 10, 40);
-            ta.setEditable(false);
-            javax.swing.JOptionPane.showMessageDialog(this, new javax.swing.JScrollPane(ta),
-                "Progress", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-        } catch (IllegalArgumentException ex) { error(ex.getMessage()); }
-    }
-
-    private void showTranscript() {
-        model.Student s = getSelectedStudent();
-        if (s == null) { info("Please select a student row."); return; }
-        try {
-            java.util.List<model.Enrollment> list = fs.getStudentTranscript(s);
-        if (list == null || list.isEmpty()) { info("No transcript records found."); return; }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(s.getFirstName()).append(" ").append(s.getLastName()).append("\n\n");
-
-        for (var e : list) {
-            String line;
-            try {
-                    var co     = e.getCourseOffering();      
-                    var course = co.getCourse();
-                    String code  = course.getCourseId();      
-                    String title = course.getTitle();          
-                    String sem   = String.valueOf(co.getSemester());
-                    
-                    line = String.format("%s (%s) — %s", title, code, sem);
-                } catch (Exception ignore) {
-                    
-                    line = String.valueOf(e);
-                }
-                sb.append(line).append("\n");
-            }
-
-            javax.swing.JTextArea ta = new javax.swing.JTextArea(sb.toString(), 18, 60);
-            ta.setEditable(false);
-            javax.swing.JOptionPane.showMessageDialog(
-                this, new javax.swing.JScrollPane(ta),
-                "Transcript Summary", javax.swing.JOptionPane.INFORMATION_MESSAGE
-            );
-        } catch (IllegalArgumentException ex) { error(ex.getMessage()); }
-    }
-    
-    private void info(String msg) {
-        javax.swing.JOptionPane.showMessageDialog(
-            this, msg, "Info", javax.swing.JOptionPane.INFORMATION_MESSAGE
-        );
-    }
-    private void error(String msg) {
-        javax.swing.JOptionPane.showMessageDialog(
-            this, msg, "Error", javax.swing.JOptionPane.ERROR_MESSAGE
-        );
-    }
-    
-    
-    
-    
-    private model.CourseOffering getSelectedCourse() {
-        return (model.CourseOffering) cmbGradeCourse.getSelectedItem();
-    }
 
     private void loadAssignments() {
         assignmentsModel.clear();
-        var co = getSelectedCourse();
-        if (co == null) return;
-
-        java.util.List<model.Assignment> list = co.getAssignments();
-        for (var a : list) assignmentsModel.addElement(a);
-        for (var a : list) assignmentsModel.addElement(a);
-
-        if (!list.isEmpty()) {
-            lstAssignments.setSelectedIndex(0);
-        } else {
-            gradesModel.setRowCount(0);
+        CourseOffering selected = (CourseOffering) cmbGradeCourse.getSelectedItem();
+        if (selected == null) return;
+        
+        for (Assignment a : selected.getAssignments()) {
+            assignmentsModel.addElement(a);
         }
     }
 
     private void loadGradesForSelectedAssignment() {
         gradesModel.setRowCount(0);
-        var co  = getSelectedCourse();
-        var asg = lstAssignments.getSelectedValue();
-        if (co == null || asg == null) return;
-
-        try {
-            for (model.Student s : fs.getEnrolledStudents(co)) {
-                
-                String id   = s.getUniversityId();
-                String name = s.getFirstName() + " " + s.getLastName();
-                gradesModel.addRow(new Object[]{ id, name, "", "" });
-            }
-        } catch (IllegalArgumentException ex) {
-            error(ex.getMessage());
-        }
+        Assignment selected = lstAssignments.getSelectedValue();
+        if (selected == null) return;
         
-         
+        CourseOffering course = selected.getCourseOffering();
+        ArrayList<Student> students = fs.getEnrolledStudents(course);
+        
+        for (Student s : students) {
+            Double score = selected.getStudentScore(s);
+            double percentage = score != null ? (score / selected.getMaxPoints()) * 100 : 0;
+            
+            gradesModel.addRow(new Object[]{
+                s.getUniversityId(),
+                s.getFullName(),
+                score != null ? score : 0.0,
+                selected.getMaxPoints(),
+                String.format("%.1f%%", percentage)
+            });
+        }
     }
 
-    private model.Student findStudentById(model.CourseOffering co, String sid) {
-        for (model.Student s : fs.getEnrolledStudents(co)) {
-            if (sid.equals(s.getUniversityId())) return s;
+    private void createNewAssignment() {
+        CourseOffering selected = (CourseOffering) cmbGradeCourse.getSelectedItem();
+        if (selected == null) {
+            info("Please select a course first.");
+            return;
         }
-        return null;
+        
+        // Create dialog
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), 
+            "Create New Assignment", true);
+        dialog.setLayout(new GridLayout(6, 2, 10, 10));
+        dialog.setSize(400, 300);
+        
+        JTextField txtTitle = new JTextField();
+        JTextArea txtDesc = new JTextArea(3, 20);
+        JTextField txtMaxPoints = new JTextField();
+        JTextField txtDueDate = new JTextField();
+        txtDueDate.setText("YYYY-MM-DD");
+        
+        dialog.add(new JLabel("Title:"));
+        dialog.add(txtTitle);
+        dialog.add(new JLabel("Description:"));
+        dialog.add(new JScrollPane(txtDesc));
+        dialog.add(new JLabel("Max Points:"));
+        dialog.add(txtMaxPoints);
+        dialog.add(new JLabel("Due Date:"));
+        dialog.add(txtDueDate);
+        
+        JButton btnCreate = new JButton("Create");
+        JButton btnCancel = new JButton("Cancel");
+        
+        btnCreate.addActionListener(e -> {
+            try {
+                String title = txtTitle.getText().trim();
+                String desc = txtDesc.getText().trim();
+                String pointsStr = txtMaxPoints.getText().trim();
+                String dateStr = txtDueDate.getText().trim();
+                
+                if (!ValidationUtility.isNotEmpty(title)) {
+                    throw new IllegalArgumentException("Title cannot be empty.");
+                }
+                if (!ValidationUtility.isValidDouble(pointsStr)) {
+                    throw new IllegalArgumentException("Max points must be a valid number.");
+                }
+                double maxPoints = Double.parseDouble(pointsStr);
+                if (maxPoints <= 0) {
+                    throw new IllegalArgumentException("Max points must be greater than 0.");
+                }
+                
+                Assignment assignment = fs.createAssignment(selected, title, desc, maxPoints);
+                
+                // Set due date if provided
+                if (!dateStr.equals("YYYY-MM-DD") && ValidationUtility.isNotEmpty(dateStr)) {
+                    try {
+                        LocalDate dueDate = LocalDate.parse(dateStr);
+                        assignment.setDueDate(dueDate);
+                    } catch (Exception ex) {
+                        // Invalid date format, skip
+                    }
+                }
+                
+                info("Assignment created successfully!");
+                loadAssignments();
+                dialog.dispose();
+                
+            } catch (Exception ex) {
+                error(ex.getMessage());
+            }
+        });
+        
+        btnCancel.addActionListener(e -> dialog.dispose());
+        
+        dialog.add(btnCreate);
+        dialog.add(btnCancel);
+        
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
     private void saveGrades() {
-        var co  = getSelectedCourse();
-        var asg = lstAssignments.getSelectedValue();
-        if (co == null || asg == null) { info("Please select a course and an assignment."); return; }
-
-        try {
-            for (int r = 0; r < gradesModel.getRowCount(); r++) {
-                String sid      = String.valueOf(gradesModel.getValueAt(r, 0)).trim();
-                String scoreStr = String.valueOf(gradesModel.getValueAt(r, 2)).trim();
-
-                if (!utility.ValidationUtility.isNotEmpty(scoreStr)) continue; 
-                int score;
-                try {
-                    score = Integer.parseInt(scoreStr);
-                } catch (NumberFormatException ex) {
-                    continue; 
-                }
-                if (score < 0 || score > asg.getMaxPoints()) {
-                    throw new IllegalArgumentException("Score must be between 0 and " + asg.getMaxPoints() + ".");
-                }
-
-                model.Student stu = findStudentById(co, sid);
-                if (stu != null) {
-                    
-                    fs.gradeAssignment(asg, stu, score);
-                }
-            }
-            info("Grades saved.");
-            loadGradesForSelectedAssignment();
-        } catch (IllegalArgumentException ex) {
-            error(ex.getMessage());
+        Assignment selected = lstAssignments.getSelectedValue();
+        if (selected == null) {
+            info("Please select an assignment first.");
+            return;
         }
-    }
-
-    private void newAssignment() {
-        var co = getSelectedCourse();
-        if (co == null) { info("Please select a course."); return; }
-
-        String title = javax.swing.JOptionPane.showInputDialog(this, "Assignment title:");
-        if (title == null || !utility.ValidationUtility.isNotEmpty(title)) return;
-
-        String maxStr = javax.swing.JOptionPane.showInputDialog(this, "Max points:");
-        if (maxStr == null || !utility.ValidationUtility.isInteger(maxStr)) return;
-        int maxPts = Integer.parseInt(maxStr);
-        if (maxPts <= 0) { error("Max points must be a positive integer."); return; }
-
-        try {
-            
-            String desc = javax.swing.JOptionPane.showInputDialog(this, "Description (optional):");
-            fs.createAssignment(co, title.trim(), (desc==null?"":desc.trim()), maxPts);
-            
-            loadAssignments();
-            info("Assignment created.");
-        } catch (IllegalArgumentException ex) {
-            error(ex.getMessage());
-        }
-    }
-
-    private void autoFinalGrade() {
-        var co = getSelectedCourse();
-        if (co == null) { info("Please select a course."); return; }
-
-        try {
-            for (model.Student s : fs.getEnrolledStudents(co)) {
-                fs.assignFinalGrade(s, co);
-            }
-            info("Final grades assigned.");
-        } catch (IllegalArgumentException ex) {
-            error(ex.getMessage());
-        }
-    }
-
-    private void showRanking() {
-        var co = getSelectedCourse();
-        if (co == null) { info("Please select a course."); return; }
-
-        try {
-            java.util.ArrayList<java.util.HashMap<String,Object>> ranked = fs.rankStudentsByGrade(co);
-
-            StringBuilder sb = new StringBuilder("Ranking:\n");
-            int i = 1;
-            for (java.util.HashMap<String,Object> row : ranked) {
-                model.Student s = (model.Student) row.get("student");
-                double pct      = ((Number) row.get("percentage")).doubleValue();
-                String letter   = String.valueOf(row.get("letter"));
-                sb.append(i++).append(". ")
-                  .append(s.getFirstName()).append(" ").append(s.getLastName())
-                  .append(" — ").append(String.format("%.2f", pct)).append("% (").append(letter).append(")\n");
-            }
-
-            javax.swing.JTextArea ta = new javax.swing.JTextArea(sb.toString(), 18, 60);
-            ta.setEditable(false);
-            javax.swing.JOptionPane.showMessageDialog(this, new javax.swing.JScrollPane(ta),
-                    "Ranking", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-        } catch (IllegalArgumentException ex) {
-            error(ex.getMessage());
-        }
-    }
-
-    private void showClassGpa() {
-        var co = getSelectedCourse();
-        if (co == null) { info("Please select a course."); return; }
-        try {
-            double gpa = fs.calculateClassGPA(co);
-            info(String.format("Class GPA: %.2f", gpa));
-        } catch (IllegalArgumentException ex) { error(ex.getMessage()); }
-    }
-    
-    
-    
-    
-    
-    private void loadReportRoster() {
-        reportModel.setRowCount(0);
-        var co = (model.CourseOffering) cmbRepCourse.getSelectedItem();
-        if (co == null) return;
-
-        try {
-            java.util.List<model.Student> list = fs.getEnrolledStudents(co);
-            for (var s : list) {
-                String name = s.getFirstName() + " " + s.getLastName();
-                reportModel.addRow(new Object[]{ s.getUniversityId(), name, s.getEmail() });
-            }
-        } catch (Exception ex) {
-            error(ex.getMessage());
-        }
-    }
-    
-    private void exportRosterCsv() {
-        if (reportModel.getRowCount() == 0) { info("No data to export."); return; }
-        var file = chooseCsvFile("roster");
-        if (file == null) return;
-
-        try (var w = new java.io.BufferedWriter(new java.io.FileWriter(file))) {
-            // header
-            w.write("Student ID,Name,Email");
-            w.newLine();
-            for (int r = 0; r < reportModel.getRowCount(); r++) {
-                String sid  = String.valueOf(reportModel.getValueAt(r, 0));
-                String name = String.valueOf(reportModel.getValueAt(r, 1));
-                String mail = String.valueOf(reportModel.getValueAt(r, 2));
-                w.write(csv(sid) + "," + csv(name) + "," + csv(mail));
-                w.newLine();
-            }
-            info("Roster exported.");
-        } catch (Exception ex) {
-            error(ex.getMessage());
-        }
-    }
-
-    private void exportGradesCsv() {
-        var co = cmbRepCourse.getSelectedItem() instanceof model.CourseOffering
-                ? (model.CourseOffering)cmbRepCourse.getSelectedItem() : null;
-        if (co == null) { info("Please select a course."); return; }
-
-        var file = chooseCsvFile("grades");
-        if (file == null) return;
-
-        try (var w = new java.io.BufferedWriter(new java.io.FileWriter(file))) {
-            w.write("Student ID,Name,Score,Letter");
-            w.newLine();
-            
-            java.util.List<model.Student> students = fs.getEnrolledStudents(co);
-
-            for (model.Student s : students) {
-                double pct = 0.0;
-                var prog = fs.getStudentProgress(s, co);
-                if (prog != null && prog.containsKey("percentage")) {
-                    Object o = prog.get("percentage");
-                    if (o instanceof Number n) pct = n.doubleValue();
-                    else pct = Double.parseDouble(String.valueOf(o));
-                }
-                String name = s.getFirstName() + " " + s.getLastName();
-                String letter = business.GradeCalculator.calculateLetterGrade(pct);
-
-                w.write(s.getUniversityId() + "," + name + "," + pct + "," + letter);
-                w.newLine();
-            }
-
-            info("Grades exported.");
-        } catch (Exception ex) {
-            error(ex.getMessage());
-        }
-    }
-
-    private java.io.File chooseCsvFile(String prefix) {
-        var fc = new javax.swing.JFileChooser();
-        fc.setDialogTitle("Save CSV");
-        fc.setSelectedFile(new java.io.File(prefix + ".csv"));
-        int ret = fc.showSaveDialog(this);
-        if (ret == javax.swing.JFileChooser.APPROVE_OPTION) {
-            var f = fc.getSelectedFile();
-            
-            if (!f.getName().toLowerCase().endsWith(".csv")) {
-                f = new java.io.File(f.getParentFile(), f.getName() + ".csv");
-            }
-            return f;
-        }
-        return null;
-    }
-
-    private String csv(String s) {
-        if (s == null) return "";
-        String t = s.replace("\"", "\"\"");
-        return "\"" + t + "\"";
-    }
-
-
-
-
-    private void showReportSummary() {
-        var co = (model.CourseOffering) cmbRepCourse.getSelectedItem();
-        if (co == null) { info("Please select a course."); return; }
-
-        java.util.List<model.Student> students = fs.getEnrolledStudents(co);
-        int count = students.size();
-
-        double sumPct = 0.0;
-        int havePct = 0;
-        java.util.Map<String, Integer> dist = new java.util.LinkedHashMap<>();
-        dist.put("A", 0); dist.put("B", 0); dist.put("C", 0); dist.put("D", 0); dist.put("F", 0);
-
-        for (var s : students) {
-            
-            var prog = fs.getStudentProgress(s, co);
-            Object p = (prog == null) ? null : prog.get("percentage");
-            if (p instanceof Number) {
-                double pct = ((Number) p).doubleValue();
-                sumPct += pct;
-                havePct++;
-                String letter = business.GradeCalculator.calculateLetterGrade(pct);
-                dist.put(letter, dist.getOrDefault(letter, 0) + 1);
-            }
-        }
-
-        double avgPct = havePct == 0 ? 0.0 : (sumPct / havePct);
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("Enrollment count: ").append(count).append("\n");
-        sb.append("Average %: ").append(String.format("%.2f", avgPct)).append("\n");
-        sb.append("Grade distribution: ").append(dist).append("\n");
-
-        txtReport.setText(sb.toString());
-    }
-
-    private void showTuitionTotalEstimated() {
-        var co = (model.CourseOffering) cmbRepCourse.getSelectedItem();
-        if (co == null) { return; }
-
-        int enrolled = fs.getEnrolledStudents(co).size();
-        int credits = co.getCourse().getCreditHours();
-
-        double total = fs.getTotalTuitionCollected(co); 
-        StringBuilder sb = new StringBuilder();
-        sb.append("Enrollment count: ").append(enrolled).append('\n');
-        sb.append("Credits per course: ").append(credits).append('\n');
-        sb.append(String.format("Total tuition collected: $%,.2f", total)); 
-        txtReport.setText(sb.toString());
-    }
-
-
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
-    @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
-    private void initComponents() {
-
-        lblHeader = new javax.swing.JLabel();
-        tabs = new javax.swing.JTabbedPane();
-        tabCourses = new javax.swing.JPanel();
-        jPanel1 = new javax.swing.JPanel();
-        lblSemester = new javax.swing.JLabel();
-        cmbSem = new javax.swing.JComboBox<>();
-        btnSave = new javax.swing.JButton();
-        btnOpen = new javax.swing.JButton();
-        btnClose = new javax.swing.JButton();
-        btnUpload = new javax.swing.JButton();
-        jScrollPane1 = new javax.swing.JScrollPane();
-        courseTable = new javax.swing.JTable();
-        tabStudents = new javax.swing.JPanel();
-        jPanel2 = new javax.swing.JPanel();
-        lblCourse = new javax.swing.JLabel();
-        cmbStuCourse = new javax.swing.JComboBox<>();
-        btnStuRefresh = new javax.swing.JButton();
-        btnViewProgress = new javax.swing.JButton();
-        btnTranscript = new javax.swing.JButton();
-        jScrollPane2 = new javax.swing.JScrollPane();
-        tblStudents = new javax.swing.JTable();
-        tabGrading = new javax.swing.JPanel();
-        jPanel3 = new javax.swing.JPanel();
-        jLabel1 = new javax.swing.JLabel();
-        cmbGradeCourse = new javax.swing.JComboBox<>();
-        btnLoadAssgn = new javax.swing.JButton();
-        btnAddAssgn = new javax.swing.JButton();
-        btnSaveGrades = new javax.swing.JButton();
-        btnAutoFinal = new javax.swing.JButton();
-        btnRank = new javax.swing.JButton();
-        btnClassGpa = new javax.swing.JButton();
-        jPanel4 = new javax.swing.JPanel();
-        jScrollPane3 = new javax.swing.JScrollPane();
-        lstAssignments = new javax.swing.JList<>();
-        jScrollPane4 = new javax.swing.JScrollPane();
-        tblGrades = new javax.swing.JTable();
-        tabReports = new javax.swing.JPanel();
-        jPanel5 = new javax.swing.JPanel();
-        jLabel2 = new javax.swing.JLabel();
-        cmbRepCourse = new javax.swing.JComboBox<>();
-        btnRepRefresh = new javax.swing.JButton();
-        btnExportRoster = new javax.swing.JButton();
-        btnExportGrades = new javax.swing.JButton();
-        jScrollPane6 = new javax.swing.JScrollPane();
-        txtReport = new javax.swing.JTextArea();
-        jScrollPane5 = new javax.swing.JScrollPane();
-        tblReport = new javax.swing.JTable();
-        tabProfile = new javax.swing.JPanel();
-        jPanel6 = new javax.swing.JPanel();
-        jLabel3 = new javax.swing.JLabel();
-        jLabel4 = new javax.swing.JLabel();
-        jLabel5 = new javax.swing.JLabel();
-        txtProfFirstName = new javax.swing.JTextField();
-        txtProfLastName = new javax.swing.JTextField();
-        txtProfEmail = new javax.swing.JTextField();
-        btnProfSave = new javax.swing.JButton();
-
-        setLayout(new java.awt.BorderLayout());
-
-        lblHeader.setText("Faculty Dashboard");
-        add(lblHeader, java.awt.BorderLayout.PAGE_START);
-
-        tabCourses.setLayout(new java.awt.BorderLayout());
-
-        lblSemester.setText("Semester");
-
-        btnSave.setText("Save");
-
-        btnOpen.setText("Open");
-
-        btnClose.setText("Close");
-
-        btnUpload.setText("Upload");
-
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(20, 20, 20)
-                .addComponent(lblSemester)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(cmbSem, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(105, 105, 105)
-                .addComponent(btnSave)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(btnOpen)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(btnClose)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(btnUpload)
-                .addContainerGap(179, Short.MAX_VALUE))
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(15, 15, 15)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(lblSemester)
-                    .addComponent(cmbSem, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnSave)
-                    .addComponent(btnOpen)
-                    .addComponent(btnClose)
-                    .addComponent(btnUpload))
-                .addContainerGap(65, Short.MAX_VALUE))
-        );
-
-        tabCourses.add(jPanel1, java.awt.BorderLayout.PAGE_START);
-
-        courseTable.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
-            new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
-            }
-        ));
-        jScrollPane1.setViewportView(courseTable);
-
-        tabCourses.add(jScrollPane1, java.awt.BorderLayout.CENTER);
-
-        tabs.addTab("My Courses", tabCourses);
-
-        tabStudents.setLayout(new java.awt.BorderLayout());
-
-        lblCourse.setText("Course");
-
-        cmbStuCourse.setModel(new javax.swing.DefaultComboBoxModel<model.CourseOffering>());
-
-        btnStuRefresh.setText("Refresh");
-        btnStuRefresh.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnStuRefreshActionPerformed(evt);
-            }
-        });
-
-        btnViewProgress.setText("View Progress");
-
-        btnTranscript.setText("Transcript");
-
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addGap(33, 33, 33)
-                .addComponent(lblCourse)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(cmbStuCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(147, 147, 147)
-                .addComponent(btnStuRefresh)
-                .addGap(18, 18, 18)
-                .addComponent(btnViewProgress)
-                .addGap(18, 18, 18)
-                .addComponent(btnTranscript)
-                .addContainerGap(150, Short.MAX_VALUE))
-        );
-        jPanel2Layout.setVerticalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addGap(15, 15, 15)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(lblCourse)
-                    .addComponent(cmbStuCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnStuRefresh)
-                    .addComponent(btnViewProgress)
-                    .addComponent(btnTranscript))
-                .addContainerGap(65, Short.MAX_VALUE))
-        );
-
-        tabStudents.add(jPanel2, java.awt.BorderLayout.PAGE_START);
-
-        tblStudents.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
-            new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
-            }
-        ));
-        jScrollPane2.setViewportView(tblStudents);
-
-        tabStudents.add(jScrollPane2, java.awt.BorderLayout.CENTER);
-
-        tabs.addTab("Students", tabStudents);
-
-        tabGrading.setLayout(new java.awt.BorderLayout());
-
-        jLabel1.setText("Course");
-
-        btnLoadAssgn.setText("Load");
-        btnLoadAssgn.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnLoadAssgnActionPerformed(evt);
-            }
-        });
-
-        btnAddAssgn.setText("New");
-
-        btnSaveGrades.setText("Save Grades");
-
-        btnAutoFinal.setText("Auto Final Grade");
-        btnAutoFinal.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnAutoFinalActionPerformed(evt);
-            }
-        });
-
-        btnRank.setText("Rank");
-
-        btnClassGpa.setText("Class GPA");
-
-        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
-        jPanel3.setLayout(jPanel3Layout);
-        jPanel3Layout.setHorizontalGroup(
-            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel3Layout.createSequentialGroup()
-                .addGap(41, 41, 41)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(btnAutoFinal)
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addComponent(jLabel1)
-                        .addGap(18, 18, 18)
-                        .addComponent(cmbGradeCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(118, 118, 118)
-                        .addComponent(btnLoadAssgn)))
-                .addGap(58, 58, 58)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(btnAddAssgn)
-                    .addComponent(btnRank))
-                .addGap(58, 58, 58)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(btnSaveGrades)
-                    .addComponent(btnClassGpa))
-                .addContainerGap(112, Short.MAX_VALUE))
-        );
-        jPanel3Layout.setVerticalGroup(
-            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel3Layout.createSequentialGroup()
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGap(24, 24, 24)
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel1)
-                            .addComponent(cmbGradeCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addGap(14, 14, 14)
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(btnLoadAssgn)
-                            .addComponent(btnAddAssgn)
-                            .addComponent(btnSaveGrades))))
-                .addGap(18, 18, 18)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btnAutoFinal)
-                    .addComponent(btnRank)
-                    .addComponent(btnClassGpa))
-                .addContainerGap(25, Short.MAX_VALUE))
-        );
-
-        tabGrading.add(jPanel3, java.awt.BorderLayout.PAGE_START);
-
-        lstAssignments.setToolTipText("");
-        jScrollPane3.setViewportView(lstAssignments);
-
-        javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
-        jPanel4.setLayout(jPanel4Layout);
-        jPanel4Layout.setHorizontalGroup(
-            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel4Layout.createSequentialGroup()
-                .addGap(24, 24, 24)
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 226, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(57, Short.MAX_VALUE))
-        );
-        jPanel4Layout.setVerticalGroup(
-            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel4Layout.createSequentialGroup()
-                .addGap(50, 50, 50)
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 208, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(172, Short.MAX_VALUE))
-        );
-
-        tabGrading.add(jPanel4, java.awt.BorderLayout.LINE_START);
-
-        tblGrades.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
-            new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
-            }
-        ));
-        jScrollPane4.setViewportView(tblGrades);
-
-        tabGrading.add(jScrollPane4, java.awt.BorderLayout.CENTER);
-
-        tabs.addTab("Grading & Ranking", tabGrading);
-
-        tabReports.setLayout(new java.awt.BorderLayout());
-
-        jLabel2.setText("Course");
-
-        btnRepRefresh.setText("Refresh");
-        btnRepRefresh.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnRepRefreshActionPerformed(evt);
-            }
-        });
-
-        btnExportRoster.setText("Export Roster");
-        btnExportRoster.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnExportRosterActionPerformed(evt);
-            }
-        });
-
-        btnExportGrades.setText("Export Grades");
-
-        txtReport.setEditable(false);
-        txtReport.setColumns(20);
-        txtReport.setRows(5);
-        jScrollPane6.setViewportView(txtReport);
-
-        javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
-        jPanel5.setLayout(jPanel5Layout);
-        jPanel5Layout.setHorizontalGroup(
-            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel5Layout.createSequentialGroup()
-                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel5Layout.createSequentialGroup()
-                        .addGap(56, 56, 56)
-                        .addComponent(jLabel2)
-                        .addGap(18, 18, 18)
-                        .addComponent(cmbRepCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(159, 159, 159)
-                        .addComponent(btnRepRefresh)
-                        .addGap(33, 33, 33)
-                        .addComponent(btnExportRoster)
-                        .addGap(29, 29, 29)
-                        .addComponent(btnExportGrades))
-                    .addGroup(jPanel5Layout.createSequentialGroup()
-                        .addGap(25, 25, 25)
-                        .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, 362, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(62, Short.MAX_VALUE))
-        );
-        jPanel5Layout.setVerticalGroup(
-            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel5Layout.createSequentialGroup()
-                .addGap(21, 21, 21)
-                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel2)
-                    .addComponent(cmbRepCourse, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnRepRefresh)
-                    .addComponent(btnExportRoster)
-                    .addComponent(btnExportGrades))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane6, javax.swing.GroupLayout.DEFAULT_SIZE, 60, Short.MAX_VALUE)
-                .addContainerGap())
-        );
-
-        tabReports.add(jPanel5, java.awt.BorderLayout.PAGE_START);
-
-        tblReport.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
-            new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
-            }
-        ));
-        jScrollPane5.setViewportView(tblReport);
-
-        tabReports.add(jScrollPane5, java.awt.BorderLayout.CENTER);
-
-        tabs.addTab("Reports & Tuition", tabReports);
-
-        tabProfile.setLayout(new java.awt.BorderLayout());
-
-        jLabel3.setText("First Name");
-
-        jLabel4.setText("Last Name");
-
-        jLabel5.setText("Email");
-
-        txtProfFirstName.setEditable(false);
-
-        txtProfLastName.setEditable(false);
-
-        btnProfSave.setText("Save");
-        btnProfSave.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnProfSaveActionPerformed(evt);
-            }
-        });
-
-        javax.swing.GroupLayout jPanel6Layout = new javax.swing.GroupLayout(jPanel6);
-        jPanel6.setLayout(jPanel6Layout);
-        jPanel6Layout.setHorizontalGroup(
-            jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel6Layout.createSequentialGroup()
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel6Layout.createSequentialGroup()
-                        .addGap(151, 151, 151)
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel3)
-                            .addComponent(jLabel4)
-                            .addComponent(jLabel5))
-                        .addGap(73, 73, 73)
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(txtProfEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtProfLastName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtProfFirstName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(jPanel6Layout.createSequentialGroup()
-                        .addGap(209, 209, 209)
-                        .addComponent(btnProfSave)))
-                .addContainerGap(408, Short.MAX_VALUE))
-        );
-        jPanel6Layout.setVerticalGroup(
-            jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel6Layout.createSequentialGroup()
-                .addGap(33, 33, 33)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel3)
-                    .addComponent(txtProfFirstName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel4)
-                    .addComponent(txtProfLastName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel5)
-                    .addComponent(txtProfEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(59, 59, 59)
-                .addComponent(btnProfSave)
-                .addContainerGap(329, Short.MAX_VALUE))
-        );
-
-        tabProfile.add(jPanel6, java.awt.BorderLayout.CENTER);
-
-        tabs.addTab("My Profile", tabProfile);
-
-        add(tabs, java.awt.BorderLayout.CENTER);
-    }// </editor-fold>//GEN-END:initComponents
-
-    private void btnStuRefreshActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnStuRefreshActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_btnStuRefreshActionPerformed
-
-    private void btnAutoFinalActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAutoFinalActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_btnAutoFinalActionPerformed
-
-    private void btnExportRosterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnExportRosterActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_btnExportRosterActionPerformed
-
-    private void btnRepRefreshActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRepRefreshActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_btnRepRefreshActionPerformed
-
-    private void btnProfSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnProfSaveActionPerformed
         
+        CourseOffering course = selected.getCourseOffering();
+        
+        for (int r = 0; r < gradesModel.getRowCount(); r++) {
+            try {
+                String studentId = (String) gradesModel.getValueAt(r, 0);
+                Student student = dir.findStudentByUniversityId(studentId);
+                Object scoreObj = gradesModel.getValueAt(r, 2);
+                
+                double score = 0;
+                if (scoreObj instanceof Double) {
+                    score = (Double) scoreObj;
+                } else if (scoreObj instanceof String) {
+                    score = Double.parseDouble((String) scoreObj);
+                }
+                
+                if (student != null) {
+                    fs.gradeAssignment(selected, student, score);
+                }
+                
+            } catch (Exception ex) {
+                error("Error saving grade for row " + (r+1) + ": " + ex.getMessage());
+                return;
+            }
+        }
+        
+        info("Grades saved successfully!");
+        loadGradesForSelectedAssignment();
+    }
+
+    private void autoComputeFinalGrades() {
+        CourseOffering selected = (CourseOffering) cmbGradeCourse.getSelectedItem();
+        if (selected == null) {
+            info("Please select a course first.");
+            return;
+        }
+        
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "This will calculate and assign final grades for all students in this course.\n" +
+            "Final grades will be based on all assignment scores.\n\n" +
+            "Continue?",
+            "Confirm Final Grade Calculation",
+            JOptionPane.YES_NO_OPTION);
+        
+        if (confirm != JOptionPane.YES_OPTION) return;
+        
+        ArrayList<Student> students = fs.getEnrolledStudents(selected);
+        int successCount = 0;
+        
+        for (Student student : students) {
+            try {
+                boolean success = fs.assignFinalGrade(student, selected);
+                if (success) successCount++;
+            } catch (Exception ex) {
+                error("Error computing grade for " + student.getFullName() + ": " + ex.getMessage());
+            }
+        }
+        
+        info("Final grades computed for " + successCount + " students!");
+        
+        // Refresh student list if on that tab
+        if (cmbStuCourse.getSelectedItem() != null) {
+            loadStudents();
+        }
+    }
+
+    private void showClassGPA() {
+        CourseOffering selected = (CourseOffering) cmbGradeCourse.getSelectedItem();
+        if (selected == null) {
+            info("Please select a course first.");
+            return;
+        }
+        
+        double classGPA = fs.calculateClassGPA(selected);
+        double averagePercentage = GradeCalculator.calculateCourseAverage(selected);
+        
+        JOptionPane.showMessageDialog(this,
+            String.format("Class Statistics for %s:\n\n" +
+                "Average Grade: %.2f%%\n" +
+                "Average GPA: %.2f\n" +
+                "Total Students: %d",
+                selected.getCourse().getCourseId(),
+                averagePercentage,
+                classGPA,
+                selected.getCurrentEnrollment()),
+            "Class GPA",
+            JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    // ==================== REPORTS TAB ====================
+    
+    private void initReportsTab() {
+        String[] cols = {"Metric", "Value"};
+        reportModel = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        tblReport.setModel(reportModel);
+
+        cmbRepCourse.removeAllItems();
+        cmbRepSemester.removeAllItems();
+        
+        for (Semester s : dir.getSemesters()) {
+            cmbRepSemester.addItem(s);
+        }
+        
+        if (me != null) {
+            for (CourseOffering co : me.getAssignedCourses()) {
+                cmbRepCourse.addItem(co);
+            }
+        }
+
+        cmbRepCourse.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                    boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof CourseOffering) {
+                    CourseOffering co = (CourseOffering) value;
+                    setText(co.getCourse().getCourseId() + " - " + co.getCourse().getTitle());
+                }
+                return this;
+            }
+        });
+
+        btnRepRefresh.addActionListener(e -> generateReport());
+        
+        cmbRepSemester.addActionListener(e -> filterCoursesBySemester());
+
+        if (cmbRepCourse.getItemCount() > 0) {
+            cmbRepCourse.setSelectedIndex(0);
+            generateReport();
+        }
+    }
+
+    private void filterCoursesBySemester() {
+        Semester selected = (Semester) cmbRepSemester.getSelectedItem();
+        if (selected == null || me == null) return;
+        
+        cmbRepCourse.removeAllItems();
+        for (CourseOffering co : me.getAssignedCourses()) {
+            if (co.getSemester().equals(selected)) {
+                cmbRepCourse.addItem(co);
+            }
+        }
+        
+        if (cmbRepCourse.getItemCount() > 0) {
+            generateReport();
+        }
+    }
+
+    private void generateReport() {
+        CourseOffering selected = (CourseOffering) cmbRepCourse.getSelectedItem();
+        if (selected == null) return;
+        
+        HashMap<String, Object> report = fs.generateCourseReport(selected);
+        
+        // Display in text area
+        StringBuilder sb = new StringBuilder();
+        sb.append("═══════════════════════════════════════════════════\n");
+        sb.append("       COURSE PERFORMANCE REPORT\n");
+        sb.append("═══════════════════════════════════════════════════\n\n");
+        sb.append("Course: ").append(report.get("courseId")).append(" - ").append(report.get("courseTitle")).append("\n");
+        sb.append("Semester: ").append(report.get("semester")).append("\n");
+        sb.append("Instructor: ").append(report.get("instructor")).append("\n\n");
+        sb.append("───────────────────────────────────────────────────\n");
+        sb.append("ENROLLMENT STATISTICS\n");
+        sb.append("───────────────────────────────────────────────────\n");
+        sb.append("Enrolled Students: ").append(report.get("enrollmentCount")).append("\n");
+        sb.append("Maximum Capacity: ").append(report.get("maxCapacity")).append("\n");
+        double utilization = ((int)report.get("enrollmentCount") * 100.0) / (int)report.get("maxCapacity");
+        sb.append("Utilization Rate: ").append(String.format("%.1f%%", utilization)).append("\n\n");
+        sb.append("───────────────────────────────────────────────────\n");
+        sb.append("PERFORMANCE METRICS\n");
+        sb.append("───────────────────────────────────────────────────\n");
+        sb.append("Average Grade: ").append(String.format("%.2f%%", report.get("averageGrade"))).append("\n");
+        sb.append("Class GPA: ").append(String.format("%.2f", report.get("classGPA"))).append("\n\n");
+        sb.append("───────────────────────────────────────────────────\n");
+        sb.append("GRADE DISTRIBUTION\n");
+        sb.append("───────────────────────────────────────────────────\n");
+        
+        @SuppressWarnings("unchecked")
+        HashMap<String, Integer> gradeDistribution = (HashMap<String, Integer>) report.get("gradeDistribution");
+        String[] grades = {"A", "A-", "B+", "B", "B-", "C+", "C", "C-", "F"};
+        for (String grade : grades) {
+            int count = gradeDistribution.getOrDefault(grade, 0);
+            sb.append(String.format("%-4s: %2d students", grade, count)).append("\n");
+        }
+        
+        sb.append("\n═══════════════════════════════════════════════════\n");
+        
+        txtReport.setText(sb.toString());
+        
+        // Display in table
+        reportModel.setRowCount(0);
+        reportModel.addRow(new Object[]{"Course ID", report.get("courseId")});
+        reportModel.addRow(new Object[]{"Course Title", report.get("courseTitle")});
+        reportModel.addRow(new Object[]{"Semester", report.get("semester")});
+        reportModel.addRow(new Object[]{"Instructor", report.get("instructor")});
+        reportModel.addRow(new Object[]{"Enrolled Students", report.get("enrollmentCount")});
+        reportModel.addRow(new Object[]{"Maximum Capacity", report.get("maxCapacity")});
+        reportModel.addRow(new Object[]{"Utilization Rate", String.format("%.1f%%", utilization)});
+        reportModel.addRow(new Object[]{"Average Grade", String.format("%.2f%%", report.get("averageGrade"))});
+        reportModel.addRow(new Object[]{"Class GPA", String.format("%.2f", report.get("classGPA"))});
+        reportModel.addRow(new Object[]{"---", "---"});
+        reportModel.addRow(new Object[]{"GRADE DISTRIBUTION", ""});
+        for (String grade : grades) {
+            int count = gradeDistribution.getOrDefault(grade, 0);
+            reportModel.addRow(new Object[]{grade, count + " students"});
+        }
+    }
+    
+    // ==================== PROFILE TAB ====================
+    
+    private void initProfileTab() {
+        if (me != null) {
+            txtProfFirstName.setText(me.getFirstName());
+            txtProfLastName.setText(me.getLastName());
+            txtProfEmail.setText(me.getEmail());
+            
+            txtProfFirstName.setEditable(false);
+            txtProfLastName.setEditable(false);
+        }
+        
+        btnProfSave.addActionListener(e -> saveProfile());
+    }
+
+    private void saveProfile() {
         try {
             String email = txtProfEmail.getText().trim();
 
-            if (!utility.ValidationUtility.isNotEmpty(email)) {
+            if (!ValidationUtility.isNotEmpty(email)) {
                 info("Email cannot be empty.");
                 return;
             }
-            if (!email.matches("^[\\w+.-]+@[\\w.-]+\\.[A-Za-z]{2,5}$")) {
+            if (!ValidationUtility.isValidEmail(email)) {
                 info("Invalid email format.");
                 return;
             }
 
-            // update model
             me.setEmail(email);
-
-            info("Profile saved.");
+            info("Profile saved successfully!");
+            
         } catch (Exception ex) {
             error(ex.getMessage());
         }
-    }//GEN-LAST:event_btnProfSaveActionPerformed
-
-    private void btnLoadAssgnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLoadAssgnActionPerformed
-        // TODO add your handling code here:
-            loadAssignments();
+    }
+    
+    // ==================== UTILITY METHODS ====================
+    
+    private void info(String msg) {
+        JOptionPane.showMessageDialog(this, msg, "Information", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    private void error(String msg) {
+        JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+    
+    // ==================== GENERATED UI CODE ====================
+    
+    @SuppressWarnings("unchecked")
+    private void initComponents() {
+        setLayout(new BorderLayout());
         
-        if (assignmentsModel.getSize() > 0) {
-            lstAssignments.setSelectedIndex(0);
-            loadGradesForSelectedAssignment();
-        }
-    }//GEN-LAST:event_btnLoadAssgnActionPerformed
-
-
-    // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnAddAssgn;
-    private javax.swing.JButton btnAutoFinal;
-    private javax.swing.JButton btnClassGpa;
-    private javax.swing.JButton btnClose;
-    private javax.swing.JButton btnExportGrades;
-    private javax.swing.JButton btnExportRoster;
-    private javax.swing.JButton btnLoadAssgn;
-    private javax.swing.JButton btnOpen;
-    private javax.swing.JButton btnProfSave;
-    private javax.swing.JButton btnRank;
-    private javax.swing.JButton btnRepRefresh;
-    private javax.swing.JButton btnSave;
-    private javax.swing.JButton btnSaveGrades;
-    private javax.swing.JButton btnStuRefresh;
-    private javax.swing.JButton btnTranscript;
-    private javax.swing.JButton btnUpload;
-    private javax.swing.JButton btnViewProgress;
-    private javax.swing.JComboBox<model.CourseOffering> cmbGradeCourse;
-    private javax.swing.JComboBox<model.CourseOffering> cmbRepCourse;
-    private javax.swing.JComboBox<model.Semester> cmbSem;
-    private javax.swing.JComboBox<model.CourseOffering> cmbStuCourse;
-    private javax.swing.JTable courseTable;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel4;
-    private javax.swing.JLabel jLabel5;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
-    private javax.swing.JPanel jPanel3;
-    private javax.swing.JPanel jPanel4;
-    private javax.swing.JPanel jPanel5;
-    private javax.swing.JPanel jPanel6;
-    private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JScrollPane jScrollPane3;
-    private javax.swing.JScrollPane jScrollPane4;
-    private javax.swing.JScrollPane jScrollPane5;
-    private javax.swing.JScrollPane jScrollPane6;
-    private javax.swing.JLabel lblCourse;
-    private javax.swing.JLabel lblHeader;
-    private javax.swing.JLabel lblSemester;
-    private javax.swing.JList<model.Assignment> lstAssignments;
-    private javax.swing.JPanel tabCourses;
-    private javax.swing.JPanel tabGrading;
-    private javax.swing.JPanel tabProfile;
-    private javax.swing.JPanel tabReports;
-    private javax.swing.JPanel tabStudents;
-    private javax.swing.JTabbedPane tabs;
-    private javax.swing.JTable tblGrades;
-    private javax.swing.JTable tblReport;
-    private javax.swing.JTable tblStudents;
-    private javax.swing.JTextField txtProfEmail;
-    private javax.swing.JTextField txtProfFirstName;
-    private javax.swing.JTextField txtProfLastName;
-    private javax.swing.JTextArea txtReport;
-    // End of variables declaration//GEN-END:variables
+        lblHeader = new JLabel("Faculty Dashboard", SwingConstants.CENTER);
+        lblHeader.setFont(new Font("Arial", Font.BOLD, 20));
+        lblHeader.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        add(lblHeader, BorderLayout.NORTH);
+        
+        tabs = new JTabbedPane();
+        
+        // Create tabs
+        tabCourses = createCoursesTabUI();
+        tabStudents = createStudentsTabUI();
+        tabGrading = createGradingTabUI();
+        tabReports = createReportsTabUI();
+        tabProfile = createProfileTabUI();
+        
+        tabs.addTab("Course Management", tabCourses);
+        tabs.addTab("Student Management", tabStudents);
+        tabs.addTab("Grading & Assignments", tabGrading);
+        tabs.addTab("Performance Reports", tabReports);
+        tabs.addTab("My Profile", tabProfile);
+        
+        add(tabs, BorderLayout.CENTER);
+    }
+    
+    private JPanel createCoursesTabUI() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        // Top panel
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.add(new JLabel("Semester:"));
+        cmbSem = new JComboBox<>();
+        topPanel.add(cmbSem);
+        
+        btnSave = new JButton("Save Changes");
+        btnOpen = new JButton("Open Enrollment");
+        btnClose = new JButton("Close Enrollment");
+        btnUpload = new JButton("Upload Syllabus");
+        
+        topPanel.add(btnSave);
+        topPanel.add(btnOpen);
+        topPanel.add(btnClose);
+        topPanel.add(btnUpload);
+        
+        // Table
+        courseTable = new JTable();
+        JScrollPane scrollPane = new JScrollPane(courseTable);
+        
+        panel.add(topPanel, BorderLayout.NORTH);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    private JPanel createStudentsTabUI() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        // Top panel
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.add(new JLabel("Select Course:"));
+        cmbStuCourse = new JComboBox<>();
+        topPanel.add(cmbStuCourse);
+        
+        btnStuRefresh = new JButton("Refresh");
+        btnViewProgress = new JButton("View Progress");
+        btnTranscript = new JButton("View Transcript");
+        btnRank = new JButton("Rank Students");
+        
+        topPanel.add(btnStuRefresh);
+        topPanel.add(btnViewProgress);
+        topPanel.add(btnTranscript);
+        topPanel.add(btnRank);
+        
+        // Tuition label
+        lblTuitionCollected = new JLabel("Total Tuition Collected: $0.00");
+        lblTuitionCollected.setFont(new Font("Arial", Font.BOLD, 14));
+        JPanel tuitionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        tuitionPanel.add(lblTuitionCollected);
+        
+        // Table
+        tblStudents = new JTable();
+        JScrollPane scrollPane = new JScrollPane(tblStudents);
+        
+        JPanel topContainer = new JPanel(new BorderLayout());
+        topContainer.add(topPanel, BorderLayout.NORTH);
+        topContainer.add(tuitionPanel, BorderLayout.SOUTH);
+        
+        panel.add(topContainer, BorderLayout.NORTH);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    private JPanel createGradingTabUI() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        // Top panel
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.add(new JLabel("Course:"));
+        cmbGradeCourse = new JComboBox<>();
+        topPanel.add(cmbGradeCourse);
+        
+        btnLoadAssgn = new JButton("Load Assignments");
+        btnAddAssgn = new JButton("Create Assignment");
+        btnSaveGrades = new JButton("Save Grades");
+        btnAutoFinal = new JButton("Compute Final Grades");
+        btnClassGpa = new JButton("Show Class GPA");
+        
+        topPanel.add(btnLoadAssgn);
+        topPanel.add(btnAddAssgn);
+        topPanel.add(btnSaveGrades);
+        topPanel.add(btnAutoFinal);
+        topPanel.add(btnClassGpa);
+        
+        // Split pane
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        
+        // Left: Assignments list
+        JPanel leftPanel = new JPanel(new BorderLayout());
+        leftPanel.setBorder(BorderFactory.createTitledBorder("Assignments"));
+        lstAssignments = new JList<>();
+        leftPanel.add(new JScrollPane(lstAssignments), BorderLayout.CENTER);
+        
+        // Right: Grades table
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.setBorder(BorderFactory.createTitledBorder("Student Grades"));
+        tblGrades = new JTable();
+        rightPanel.add(new JScrollPane(tblGrades), BorderLayout.CENTER);
+        
+        splitPane.setLeftComponent(leftPanel);
+        splitPane.setRightComponent(rightPanel);
+        splitPane.setDividerLocation(250);
+        
+        panel.add(topPanel, BorderLayout.NORTH);
+        panel.add(splitPane, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    private JPanel createReportsTabUI() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        // Top panel
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.add(new JLabel("Semester:"));
+        cmbRepSemester = new JComboBox<>();
+        topPanel.add(cmbRepSemester);
+        
+        topPanel.add(new JLabel("Course:"));
+        cmbRepCourse = new JComboBox<>();
+        topPanel.add(cmbRepCourse);
+        
+        btnRepRefresh = new JButton("Generate Report");
+        topPanel.add(btnRepRefresh);
+        
+        // Split pane for text and table
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        
+        // Top: Text report
+        txtReport = new JTextArea();
+        txtReport.setEditable(false);
+        txtReport.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        JScrollPane textScroll = new JScrollPane(txtReport);
+        textScroll.setBorder(BorderFactory.createTitledBorder("Detailed Report"));
+        
+        // Bottom: Table summary
+        tblReport = new JTable();
+        JScrollPane tableScroll = new JScrollPane(tblReport);
+        tableScroll.setBorder(BorderFactory.createTitledBorder("Summary"));
+        
+        splitPane.setTopComponent(textScroll);
+        splitPane.setBottomComponent(tableScroll);
+        splitPane.setDividerLocation(300);
+        
+        panel.add(topPanel, BorderLayout.NORTH);
+        panel.add(splitPane, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    private JPanel createProfileTabUI() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        
+        JPanel formPanel = new JPanel(new GridLayout(4, 2, 10, 10));
+        formPanel.setBorder(BorderFactory.createTitledBorder("Personal Information"));
+        
+        formPanel.add(new JLabel("First Name:"));
+        txtProfFirstName = new JTextField();
+        formPanel.add(txtProfFirstName);
+        
+        formPanel.add(new JLabel("Last Name:"));
+        txtProfLastName = new JTextField();
+        formPanel.add(txtProfLastName);
+        
+        formPanel.add(new JLabel("Email:"));
+        txtProfEmail = new JTextField();
+        formPanel.add(txtProfEmail);
+        
+        formPanel.add(new JLabel(""));
+        btnProfSave = new JButton("Save Changes");
+        formPanel.add(btnProfSave);
+        
+        panel.add(formPanel, BorderLayout.NORTH);
+        
+        return panel;
+    }
 }

@@ -1,4 +1,4 @@
-package UI.Admin;
+package UI.Student;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -66,10 +66,11 @@ public class StudentDashboard extends javax.swing.JPanel {
     
     // Financial Components
     private JLabel currentBalanceLabel;
+    private JTable unpaidCoursesTable;
+    private DefaultTableModel unpaidCoursesTableModel;
     private JButton payTuitionButton;
     private JTable paymentHistoryTable;
     private DefaultTableModel paymentTableModel;
-    private JTextField paymentAmountField;
     
     // Coursework Components
     private JComboBox<CourseOffering> courseworkCourseComboBox;
@@ -211,71 +212,89 @@ public class StudentDashboard extends javax.swing.JPanel {
         return panel;
     }
     
-    private void performSearch() {
-        if (semesterComboBox.getSelectedItem() == null) {
-            JOptionPane.showMessageDialog(this, "Please select a semester first.");
-            return;
-        }
-        
-        Semester selectedSemester = (Semester) semesterComboBox.getSelectedItem();
-        String searchText = searchTextField.getText().trim();
-        String searchMethod = (String) searchMethodComboBox.getSelectedItem();
-        
-        ArrayList<CourseOffering> results = new ArrayList<>();
-        
-        if (searchText.isEmpty()) {
-            loadCourseOfferings();
-            return;
-        }
-        
-        switch (searchMethod) {
-            case "Course ID":
-                results = studentService.searchByCourseId(searchText, selectedSemester);
-                break;
-            case "Instructor Name":
-                results = studentService.searchByInstructor(searchText, selectedSemester);
-                break;
-            case "Course Title":
-                results = studentService.searchByTitle(searchText, selectedSemester);
-                break;
-        }
-        
-        displayCourseOfferings(results);
-    }
-    
     private void loadCourseOfferings() {
-        if (semesterComboBox.getSelectedItem() == null) return;
-        
-        Semester selectedSemester = (Semester) semesterComboBox.getSelectedItem();
-        ArrayList<CourseOffering> offerings = directory.getCourseOfferingsBySemester(selectedSemester);
-        displayCourseOfferings(offerings);
-    }
-    
-    private void displayCourseOfferings(ArrayList<CourseOffering> offerings) {
         courseTableModel.setRowCount(0);
         
-        for (CourseOffering offering : offerings) {
-            String status = offering.isEnrollmentOpen() ? "Open" : "Closed";
-            if (!offering.hasAvailableSeats()) {
-                status = "Full";
-            }
-            
-            // Check if student is already enrolled
+        Semester selectedSemester = (Semester) semesterComboBox.getSelectedItem();
+        if (selectedSemester == null) return;
+        
+        ArrayList<CourseOffering> offerings = studentService.getAvailableCourses(selectedSemester);
+        
+        for (CourseOffering co : offerings) {
+            boolean isEnrolled = false;
             for (Enrollment e : currentStudent.getEnrollments()) {
-                if (e.getCourseOffering().equals(offering) && e.isActive()) {
-                    status = "Enrolled";
+                if (e.getCourseOffering().equals(co) && e.isActive()) {
+                    isEnrolled = true;
                     break;
                 }
             }
             
+            String status = isEnrolled ? "Enrolled" : 
+                           co.hasAvailableSeats() ? "Available" : "Full";
+            
             courseTableModel.addRow(new Object[]{
-                offering.getCourse().getCourseId(),
-                offering.getCourse().getTitle(),
-                offering.getInstructor().getFullName(),
-                offering.getCourse().getCreditHours(),
-                offering.getSchedule(),
-                offering.getRoomLocation(),
-                offering.getCurrentEnrollment() + "/" + offering.getMaxCapacity(),
+                co.getCourse().getCourseId(),
+                co.getCourse().getTitle(),
+                co.getInstructor().getFullName(),
+                co.getCourse().getCreditHours(),
+                co.getSchedule() != null ? co.getSchedule() : "TBA",
+                co.getRoomLocation() != null ? co.getRoomLocation() : "TBA",
+                co.getCurrentEnrollment() + "/" + co.getMaxCapacity(),
+                status
+            });
+        }
+    }
+    
+    private void performSearch() {
+        String searchTerm = searchTextField.getText().trim();
+        if (searchTerm.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter a search term.");
+            return;
+        }
+        
+        Semester selectedSemester = (Semester) semesterComboBox.getSelectedItem();
+        if (selectedSemester == null) {
+            JOptionPane.showMessageDialog(this, "Please select a semester.");
+            return;
+        }
+        
+        courseTableModel.setRowCount(0);
+        
+        String searchMethod = (String) searchMethodComboBox.getSelectedItem();
+        ArrayList<CourseOffering> results = new ArrayList<>();
+        
+        switch (searchMethod) {
+            case "Course ID":
+                results = studentService.searchByCourseId(searchTerm, selectedSemester);
+                break;
+            case "Instructor Name":
+                results = studentService.searchByInstructor(searchTerm, selectedSemester);
+                break;
+            case "Course Title":
+                results = studentService.searchByTitle(searchTerm, selectedSemester);
+                break;
+        }
+        
+        for (CourseOffering co : results) {
+            boolean isEnrolled = false;
+            for (Enrollment e : currentStudent.getEnrollments()) {
+                if (e.getCourseOffering().equals(co) && e.isActive()) {
+                    isEnrolled = true;
+                    break;
+                }
+            }
+            
+            String status = isEnrolled ? "Enrolled" : 
+                           co.hasAvailableSeats() ? "Available" : "Full";
+            
+            courseTableModel.addRow(new Object[]{
+                co.getCourse().getCourseId(),
+                co.getCourse().getTitle(),
+                co.getInstructor().getFullName(),
+                co.getCourse().getCreditHours(),
+                co.getSchedule() != null ? co.getSchedule() : "TBA",
+                co.getRoomLocation() != null ? co.getRoomLocation() : "TBA",
+                co.getCurrentEnrollment() + "/" + co.getMaxCapacity(),
                 status
             });
         }
@@ -284,7 +303,7 @@ public class StudentDashboard extends javax.swing.JPanel {
     private void enrollInCourse() {
         int selectedRow = courseOfferingsTable.getSelectedRow();
         if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "Please select a course to enroll.");
+            JOptionPane.showMessageDialog(this, "Please select a course to enroll in.");
             return;
         }
         
@@ -300,18 +319,24 @@ public class StudentDashboard extends javax.swing.JPanel {
             }
         }
         
-        if (selectedOffering == null) return;
+        if (selectedOffering == null) {
+            JOptionPane.showMessageDialog(this, "Course not found.");
+            return;
+        }
         
         try {
             Enrollment enrollment = studentService.enrollInCourse(currentStudent, selectedOffering);
+            
             JOptionPane.showMessageDialog(this, 
-                "Successfully enrolled in " + selectedOffering.getCourse().getTitle() + 
-                "\nTuition added: $" + enrollment.getTuitionAmount());
+                "Successfully enrolled in " + selectedOffering.getCourse().getCourseId() + "!\n" +
+                "Tuition added: $" + String.format("%.2f", enrollment.getTuitionAmount()),
+                "Enrollment Successful", JOptionPane.INFORMATION_MESSAGE);
+            
             loadCourseOfferings();
-            updateGraduationAudit();
             updateFinancialInfo();
-        } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Enrollment Error", JOptionPane.ERROR_MESSAGE);
+            
+        } catch (IllegalArgumentException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Enrollment Error", JOptionPane.ERROR_MESSAGE);
         }
     }
     
@@ -328,8 +353,8 @@ public class StudentDashboard extends javax.swing.JPanel {
         // Find the enrollment
         Enrollment enrollmentToDrop = null;
         for (Enrollment e : currentStudent.getEnrollments()) {
-            if (e.getCourseOffering().getCourse().getCourseId().equals(courseId) &&
-                e.getCourseOffering().getSemester().equals(selectedSemester) &&
+            if (e.getCourseOffering().getSemester().equals(selectedSemester) &&
+                e.getCourseOffering().getCourse().getCourseId().equals(courseId) &&
                 e.isActive()) {
                 enrollmentToDrop = e;
                 break;
@@ -342,16 +367,26 @@ public class StudentDashboard extends javax.swing.JPanel {
         }
         
         int confirm = JOptionPane.showConfirmDialog(this,
-            "Are you sure you want to drop " + enrollmentToDrop.getCourseOffering().getCourse().getTitle() + "?",
+            "Are you sure you want to drop " + courseId + "?",
             "Confirm Drop", JOptionPane.YES_NO_OPTION);
         
         if (confirm == JOptionPane.YES_OPTION) {
+            boolean wasPaid = enrollmentToDrop.isPaid();
+            double tuitionAmount = enrollmentToDrop.getTuitionAmount();
+            
             boolean success = studentService.dropCourse(currentStudent, enrollmentToDrop);
+            
             if (success) {
-                JOptionPane.showMessageDialog(this, "Course dropped successfully.");
+                String message = "Successfully dropped " + courseId + ".";
+                if (wasPaid) {
+                    message += "\nRefund processed: $" + String.format("%.2f", tuitionAmount);
+                }
+                
+                JOptionPane.showMessageDialog(this, message, "Drop Successful", JOptionPane.INFORMATION_MESSAGE);
                 loadCourseOfferings();
-                updateGraduationAudit();
                 updateFinancialInfo();
+            } else {
+                JOptionPane.showMessageDialog(this, "Failed to drop course.", "Drop Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -363,56 +398,57 @@ public class StudentDashboard extends javax.swing.JPanel {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         
         // Title
-        JLabel titleLabel = new JLabel("Graduation Audit - MSIS Program", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        JLabel titleLabel = new JLabel("Graduation Audit", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
         
         // Info panel
-        JPanel infoPanel = new JPanel(new GridLayout(8, 1, 10, 10));
-        infoPanel.setBorder(BorderFactory.createTitledBorder("Degree Progress"));
+        JPanel infoPanel = new JPanel(new GridLayout(6, 1, 10, 10));
+        infoPanel.setBorder(BorderFactory.createTitledBorder("Graduation Requirements"));
         
         totalCreditsLabel = new JLabel("Total Credits Completed: 0");
-        totalCreditsLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        totalCreditsLabel.setFont(new Font("Arial", Font.PLAIN, 16));
         
         requiredCreditsLabel = new JLabel("Required Credits: 32");
-        requiredCreditsLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        requiredCreditsLabel.setFont(new Font("Arial", Font.PLAIN, 16));
         
         creditsRemainingLabel = new JLabel("Credits Remaining: 32");
-        creditsRemainingLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        
-        creditProgressBar = new JProgressBar(0, 32);
-        creditProgressBar.setStringPainted(true);
+        creditsRemainingLabel.setFont(new Font("Arial", Font.PLAIN, 16));
         
         coreCourseStatusLabel = new JLabel("Core Course (INFO 5100): Not Completed");
-        coreCourseStatusLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        coreCourseStatusLabel.setFont(new Font("Arial", Font.PLAIN, 16));
         
         overallGPALabel = new JLabel("Overall GPA: 0.00");
-        overallGPALabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        overallGPALabel.setFont(new Font("Arial", Font.PLAIN, 16));
         
         graduationStatusLabel = new JLabel("Graduation Status: Not Eligible");
         graduationStatusLabel.setFont(new Font("Arial", Font.BOLD, 18));
         
-        JButton refreshButton = new JButton("Refresh Status");
-        refreshButton.addActionListener(e -> updateGraduationAudit());
-        
         infoPanel.add(totalCreditsLabel);
         infoPanel.add(requiredCreditsLabel);
         infoPanel.add(creditsRemainingLabel);
-        infoPanel.add(creditProgressBar);
         infoPanel.add(coreCourseStatusLabel);
         infoPanel.add(overallGPALabel);
         infoPanel.add(graduationStatusLabel);
-        infoPanel.add(refreshButton);
+        
+        // Progress bar
+        JPanel progressPanel = new JPanel(new BorderLayout(5, 5));
+        progressPanel.setBorder(BorderFactory.createTitledBorder("Credit Progress"));
+        
+        creditProgressBar = new JProgressBar(0, 32);
+        creditProgressBar.setStringPainted(true);
+        creditProgressBar.setPreferredSize(new Dimension(400, 30));
+        
+        progressPanel.add(new JLabel("Progress toward 32 credits:", SwingConstants.LEFT), BorderLayout.NORTH);
+        progressPanel.add(creditProgressBar, BorderLayout.CENTER);
         
         panel.add(titleLabel, BorderLayout.NORTH);
         panel.add(infoPanel, BorderLayout.CENTER);
+        panel.add(progressPanel, BorderLayout.SOUTH);
         
         return panel;
     }
     
     private void updateGraduationAudit() {
-        // Update credits completed
-        studentService.updateCreditsCompleted(currentStudent);
-        
         HashMap<String, Object> status = studentService.getGraduationStatus(currentStudent);
         
         int totalCredits = (int) status.get("totalCredits");
@@ -424,26 +460,18 @@ public class StudentDashboard extends javax.swing.JPanel {
         
         totalCreditsLabel.setText("Total Credits Completed: " + totalCredits);
         creditsRemainingLabel.setText("Credits Remaining: " + creditsRemaining);
-        creditProgressBar.setValue(totalCredits);
-        creditProgressBar.setString(totalCredits + " / " + requiredCredits);
-        
-        if (hasCoreCourse) {
-            coreCourseStatusLabel.setText("Core Course (INFO 5100): ✓ Completed");
-            coreCourseStatusLabel.setForeground(new Color(46, 125, 50));
-        } else {
-            coreCourseStatusLabel.setText("Core Course (INFO 5100): ✗ Not Completed");
-            coreCourseStatusLabel.setForeground(new Color(211, 47, 47));
-        }
-        
         overallGPALabel.setText(String.format("Overall GPA: %.2f", gpa));
         
-        if (isEligible) {
-            graduationStatusLabel.setText("🎓 Graduation Status: READY TO GRADUATE!");
-            graduationStatusLabel.setForeground(new Color(46, 125, 50));
-        } else {
-            graduationStatusLabel.setText("Graduation Status: Not Eligible Yet");
-            graduationStatusLabel.setForeground(new Color(211, 47, 47));
-        }
+        coreCourseStatusLabel.setText("Core Course (INFO 5100): " + 
+            (hasCoreCourse ? "Completed ✓" : "Not Completed"));
+        coreCourseStatusLabel.setForeground(hasCoreCourse ? new Color(46, 125, 50) : new Color(211, 47, 47));
+        
+        graduationStatusLabel.setText("Graduation Status: " + 
+            (isEligible ? "ELIGIBLE TO GRADUATE ✓" : "Not Eligible"));
+        graduationStatusLabel.setForeground(isEligible ? new Color(46, 125, 50) : new Color(211, 47, 47));
+        
+        creditProgressBar.setValue(totalCredits);
+        creditProgressBar.setString(totalCredits + " / " + requiredCredits + " credits");
     }
     
     // ========== TRANSCRIPT PANEL ==========
@@ -504,21 +532,12 @@ public class StudentDashboard extends javax.swing.JPanel {
     }
     
     private void loadTranscript() {
-        // Check if tuition is paid
-        if (!studentService.canViewTranscript(currentStudent)) {
-            transcriptTableModel.setRowCount(0);
-            JOptionPane.showMessageDialog(this, 
-                "You must pay your tuition balance before viewing your transcript.\n" +
-                "Current balance: $" + String.format("%.2f", currentStudent.getAccountBalance()),
-                "Transcript Locked", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        
         transcriptTableModel.setRowCount(0);
         
         String selectedItem = (String) transcriptSemesterComboBox.getSelectedItem();
         ArrayList<Enrollment> enrollments;
         
+        // Get only paid enrollments
         if ("All Semesters".equals(selectedItem)) {
             enrollments = studentService.getCompleteTranscript(currentStudent);
         } else {
@@ -535,6 +554,14 @@ public class StudentDashboard extends javax.swing.JPanel {
             } else {
                 enrollments = new ArrayList<>();
             }
+        }
+        
+        // Check if student has unpaid balance
+        if (enrollments.isEmpty() && studentService.calculateUnpaidBalance(currentStudent) > 0) {
+            JOptionPane.showMessageDialog(this, 
+                "Transcript only shows paid courses.\n" +
+                "Current unpaid balance: $" + String.format("%.2f", studentService.calculateUnpaidBalance(currentStudent)),
+                "Partial Transcript", JOptionPane.INFORMATION_MESSAGE);
         }
         
         // Display enrollments
@@ -599,30 +626,43 @@ public class StudentDashboard extends javax.swing.JPanel {
         titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
         
         // Balance panel
-        JPanel balancePanel = new JPanel(new GridLayout(3, 1, 5, 5));
+        JPanel balancePanel = new JPanel(new BorderLayout(10, 10));
         balancePanel.setBorder(BorderFactory.createTitledBorder("Current Balance"));
         
-        currentBalanceLabel = new JLabel("Current Balance: $0.00");
+        currentBalanceLabel = new JLabel("Unpaid Balance: $0.00");
         currentBalanceLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        balancePanel.add(currentBalanceLabel, BorderLayout.NORTH);
         
-        JPanel paymentPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        paymentPanel.add(new JLabel("Payment Amount: $"));
-        paymentAmountField = new JTextField(10);
-        paymentPanel.add(paymentAmountField);
+        // Unpaid courses table
+        JPanel unpaidPanel = new JPanel(new BorderLayout());
+        unpaidPanel.setBorder(BorderFactory.createTitledBorder("Unpaid Courses - Select to Pay"));
         
-        payTuitionButton = new JButton("Pay Tuition");
+        String[] unpaidColumns = {"Course ID", "Course Name", "Semester", "Credits", "Tuition Amount"};
+        unpaidCoursesTableModel = new DefaultTableModel(unpaidColumns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        unpaidCoursesTable = new JTable(unpaidCoursesTableModel);
+        unpaidCoursesTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        JScrollPane unpaidScrollPane = new JScrollPane(unpaidCoursesTable);
+        
+        payTuitionButton = new JButton("Pay for Selected Course");
         payTuitionButton.setBackground(new Color(46, 125, 50));
         payTuitionButton.setForeground(Color.WHITE);
-        paymentPanel.add(payTuitionButton);
+        payTuitionButton.addActionListener(e -> processTuitionPayment());
         
-        balancePanel.add(currentBalanceLabel);
-        balancePanel.add(paymentPanel);
+        unpaidPanel.add(unpaidScrollPane, BorderLayout.CENTER);
+        unpaidPanel.add(payTuitionButton, BorderLayout.SOUTH);
+        
+        balancePanel.add(unpaidPanel, BorderLayout.CENTER);
         
         // Payment history table
         JPanel historyPanel = new JPanel(new BorderLayout());
         historyPanel.setBorder(BorderFactory.createTitledBorder("Payment History"));
         
-        String[] columns = {"Payment ID", "Date", "Amount", "Semester", "Description"};
+        String[] columns = {"Payment ID", "Date", "Amount", "Course", "Description"};
         paymentTableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -634,28 +674,42 @@ public class StudentDashboard extends javax.swing.JPanel {
         
         historyPanel.add(historyScrollPane, BorderLayout.CENTER);
         
-        // Action listener
-        payTuitionButton.addActionListener(e -> processTuitionPayment());
-        
         // Layout
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.add(titleLabel, BorderLayout.NORTH);
         topPanel.add(balancePanel, BorderLayout.CENTER);
         
-        panel.add(topPanel, BorderLayout.NORTH);
-        panel.add(historyPanel, BorderLayout.CENTER);
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, topPanel, historyPanel);
+        splitPane.setResizeWeight(0.6);
+        
+        panel.add(splitPane, BorderLayout.CENTER);
         
         return panel;
     }
     
     private void updateFinancialInfo() {
-        double balance = currentStudent.getAccountBalance();
-        currentBalanceLabel.setText(String.format("Current Balance: $%.2f", balance));
+        double unpaidBalance = studentService.calculateUnpaidBalance(currentStudent);
+        currentBalanceLabel.setText(String.format("Unpaid Balance: $%.2f", unpaidBalance));
         
-        if (balance > 0) {
+        if (unpaidBalance > 0) {
             currentBalanceLabel.setForeground(new Color(211, 47, 47));
         } else {
             currentBalanceLabel.setForeground(new Color(46, 125, 50));
+        }
+        
+        // Load unpaid courses
+        unpaidCoursesTableModel.setRowCount(0);
+        ArrayList<Enrollment> unpaidEnrollments = studentService.getUnpaidEnrollments(currentStudent);
+        
+        for (Enrollment enrollment : unpaidEnrollments) {
+            CourseOffering co = enrollment.getCourseOffering();
+            unpaidCoursesTableModel.addRow(new Object[]{
+                co.getCourse().getCourseId(),
+                co.getCourse().getTitle(),
+                co.getSemester().getFullName(),
+                co.getCourse().getCreditHours(),
+                String.format("$%.2f", enrollment.getTuitionAmount())
+            });
         }
         
         // Load payment history
@@ -663,69 +717,85 @@ public class StudentDashboard extends javax.swing.JPanel {
         ArrayList<TuitionPayment> payments = studentService.getPaymentHistory(currentStudent);
         
         for (TuitionPayment payment : payments) {
+            String courseInfo = payment.getEnrollment() != null ? 
+                payment.getEnrollment().getCourseOffering().getCourse().getCourseId() : "N/A";
+            
             paymentTableModel.addRow(new Object[]{
                 payment.getPaymentId(),
                 payment.getPaymentDate().toString(),
                 String.format("$%.2f", payment.getAmount()),
-                payment.getSemester(),
+                courseInfo,
                 payment.getDescription()
             });
         }
     }
     
     private void processTuitionPayment() {
-        // Check if there's a balance
-        if (currentStudent.getAccountBalance() <= 0) {
+        // Check if there's unpaid balance
+        double unpaidBalance = studentService.calculateUnpaidBalance(currentStudent);
+        if (unpaidBalance <= 0) {
             JOptionPane.showMessageDialog(this, 
-                "No balance to pay. Your account is current.",
+                "No balance to pay. All courses are paid!",
                 "No Balance", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         
-        String amountText = paymentAmountField.getText().trim();
-        
-        if (amountText.isEmpty()) {
+        // Get selected course
+        int selectedRow = unpaidCoursesTable.getSelectedRow();
+        if (selectedRow == -1) {
             JOptionPane.showMessageDialog(this, 
-                "Please enter a payment amount.",
-                "Invalid Input", JOptionPane.ERROR_MESSAGE);
+                "Please select a course to pay for.",
+                "No Course Selected", JOptionPane.WARNING_MESSAGE);
             return;
         }
         
-        try {
-            double amount = Double.parseDouble(amountText);
-            
-            if (amount <= 0) {
-                JOptionPane.showMessageDialog(this, 
-                    "Payment amount must be greater than 0.",
-                    "Invalid Amount", JOptionPane.ERROR_MESSAGE);
-                return;
+        // Find the enrollment
+        String courseId = (String) unpaidCoursesTableModel.getValueAt(selectedRow, 0);
+        String semester = (String) unpaidCoursesTableModel.getValueAt(selectedRow, 2);
+        
+        ArrayList<Enrollment> unpaidEnrollments = studentService.getUnpaidEnrollments(currentStudent);
+        Enrollment enrollmentToPay = null;
+        
+        for (Enrollment e : unpaidEnrollments) {
+            if (e.getCourseOffering().getCourse().getCourseId().equals(courseId) &&
+                e.getCourseOffering().getSemester().getFullName().equals(semester)) {
+                enrollmentToPay = e;
+                break;
             }
-            
-            if (amount > currentStudent.getAccountBalance()) {
-                amount = currentStudent.getAccountBalance();
+        }
+        
+        if (enrollmentToPay == null) {
+            JOptionPane.showMessageDialog(this, 
+                "Enrollment not found.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        // Confirm payment
+        double amount = enrollmentToPay.getTuitionAmount();
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Pay tuition for " + courseId + "?\n" +
+            "Amount: $" + String.format("%.2f", amount),
+            "Confirm Payment", JOptionPane.YES_NO_OPTION);
+        
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                TuitionPayment payment = studentService.payForCourse(currentStudent, enrollmentToPay);
+                
                 JOptionPane.showMessageDialog(this, 
-                    "Payment amount exceeds balance. Paying full balance: $" + String.format("%.2f", amount));
+                    "Payment successful!\n" +
+                    "Course: " + courseId + "\n" +
+                    "Amount paid: $" + String.format("%.2f", amount) + "\n" +
+                    "Remaining balance: $" + String.format("%.2f", studentService.calculateUnpaidBalance(currentStudent)),
+                    "Payment Successful", JOptionPane.INFORMATION_MESSAGE);
+                
+                updateFinancialInfo();
+                
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(this, 
+                    ex.getMessage(),
+                    "Payment Error", JOptionPane.ERROR_MESSAGE);
             }
-            
-            TuitionPayment payment = studentService.payTuition(currentStudent, amount);
-            
-            JOptionPane.showMessageDialog(this, 
-                "Payment successful!\n" +
-                "Amount paid: $" + String.format("%.2f", amount) + "\n" +
-                "Remaining balance: $" + String.format("%.2f", currentStudent.getAccountBalance()),
-                "Payment Successful", JOptionPane.INFORMATION_MESSAGE);
-            
-            paymentAmountField.setText("");
-            updateFinancialInfo();
-            
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, 
-                "Invalid amount format. Please enter a valid number.",
-                "Invalid Input", JOptionPane.ERROR_MESSAGE);
-        } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, 
-                ex.getMessage(),
-                "Payment Error", JOptionPane.ERROR_MESSAGE);
         }
     }
     
