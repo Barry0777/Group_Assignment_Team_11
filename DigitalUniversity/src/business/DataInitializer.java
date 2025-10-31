@@ -4,10 +4,6 @@ import model.*;
 import accesscontrol.*;
 import java.time.LocalDate;
 
-/**
- * DataInitializer - Pre-populate system with required data
- * Author: [Your Name]
- */
 public class DataInitializer {
     
     private UniversityDirectory directory;
@@ -171,8 +167,7 @@ public class DataInitializer {
             faculties[i].addCourse(offering);
         }
         
-        // 10. Enroll some students in courses (seat assignments)
-        // Enroll students 0-4 in course 0 (INFO 5100)
+        // 10. Enroll some students in courses
         CourseOffering info5100Offering = directory.getCourseOfferings().get(0);
         for (int i = 0; i < 5; i++) {
             Enrollment enrollment = new Enrollment(
@@ -184,13 +179,12 @@ public class DataInitializer {
             students[i].addEnrollment(enrollment);
             info5100Offering.addEnrollment(enrollment);
             
-            // Add tuition balance
             students[i].setAccountBalance(students[i].getAccountBalance() + enrollment.getTuitionAmount());
         }
         
         // Enroll students in other courses
         for (int i = 0; i < 5; i++) {
-            for (int j = 1; j < 3; j++) { // Each student enrolls in 2 more courses
+            for (int j = 1; j < 3; j++) {
                 CourseOffering offering = directory.getCourseOfferings().get(j);
                 Enrollment enrollment = new Enrollment(
                     directory.generateEnrollmentId(),
@@ -201,7 +195,6 @@ public class DataInitializer {
                 students[i].addEnrollment(enrollment);
                 offering.addEnrollment(enrollment);
                 
-                // Add tuition balance
                 students[i].setAccountBalance(students[i].getAccountBalance() + enrollment.getTuitionAmount());
             }
         }

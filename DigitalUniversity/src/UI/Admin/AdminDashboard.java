@@ -55,15 +55,15 @@ public class AdminDashboard extends javax.swing.JPanel {
     JLabel title = new JLabel("Manage User Accounts", SwingConstants.CENTER);
 
     // 使用 class-level model
-    String[] columns = {"Username", "Role", "University ID"};
+    String[] columns = {"Username", "Role", "University ID", "Email"};
     userTableModel = new DefaultTableModel(columns, 0);
     userTable = new JTable(userTableModel);
 
     // 預設帳號
-    userTableModel.addRow(new Object[]{"admin", "ADMIN", "U0001"});
-    userTableModel.addRow(new Object[]{"faculty01", "FACULTY", "U0002"});
-    userTableModel.addRow(new Object[]{"student01", "STUDENT", "U0003"});
-    userTableModel.addRow(new Object[]{"registrar01", "REGISTRAR", "U0004"});
+    userTableModel.addRow(new Object[]{"admin", "ADMIN", "U0001","ADMIN@example.com"});
+    userTableModel.addRow(new Object[]{"faculty01", "FACULTY", "U0002","FACULTY@example.com"});
+    userTableModel.addRow(new Object[]{"student01", "STUDENT", "U0003","STUDENT@example.com"});
+    userTableModel.addRow(new Object[]{"registrar01", "REGISTRAR", "U0004","REGISTRAR@example.com"});
 
     JButton btnAdd = new JButton("Add Account");
     JButton btnEdit = new JButton("Edit Account");
@@ -82,6 +82,9 @@ public class AdminDashboard extends javax.swing.JPanel {
                 this, "Select Role:", "Choose Role",
                 JOptionPane.PLAIN_MESSAGE, null, roles, roles[0]);
         if (role == null) return;
+        
+         String email = JOptionPane.showInputDialog(this, "Enter email (optional):", username + "@example.com");
+        if (email == null || email.trim().isEmpty()) email = username + "@example.com";
 
         // 產生唯一 University ID
         String uniId = generateUniversityId();
@@ -91,14 +94,14 @@ public class AdminDashboard extends javax.swing.JPanel {
                 uniId,
                 username,          // firstName
                 "",                // lastName
-                username + "@example.com"  // email
+                email  // email
         );
 
         // 呼叫後端 service
         adminService.createUserAccount(username, password, role.toUpperCase(), tempPerson);
 
         // 更新 JTable
-        userTableModel.addRow(new Object[]{username, role.toUpperCase(), uniId});
+        userTableModel.addRow(new Object[]{username, role.toUpperCase(), uniId, email});
         userTableModel.fireTableDataChanged();
         JOptionPane.showMessageDialog(this, "✅ Account created successfully!");
     });
@@ -115,6 +118,14 @@ public class AdminDashboard extends javax.swing.JPanel {
             userTableModel.setValueAt(newUsername, row, 0);
             JOptionPane.showMessageDialog(this, "Username updated!");
         }
+        
+        String newEmail = JOptionPane.showInputDialog(this, "Edit email:");
+        if (newEmail == null || newEmail.trim().isEmpty());
+
+        // 更新 JTable
+        userTableModel.setValueAt(newUsername, row, 0);
+        userTableModel.setValueAt(newEmail, row, 3);
+        JOptionPane.showMessageDialog(this, "✅ Account updated!");
     });
 
     // ️ 刪除帳號
@@ -332,13 +343,13 @@ private String generateUniversityId() {
             model.addRow(new Object[]{"Total Enrollments", directory.getEnrollments().size()});
 
             // 假設 TuitionPayment 已實作
-            //double totalPaid = 0.0;
-            //for (Student s : directory.getStudents()) {
-           //     for (TuitionPayment t : s.getPayments()) {
-            //        totalPaid += t.getAmount();
-           //     }
-           // }
-           // model.addRow(new Object[]{"💰 Total Tuition Paid", String.format("$%.2f", totalPaid)});
+//            double totalPaid = 0.0;
+//            for (Student s : directory.getStudents()) {
+//                for (TuitionPayment t : s.getPayments()) {
+//                    totalPaid += t.getAmount();
+//                }
+//            }
+//            model.addRow(new Object[]{"💰 Total Tuition Paid", String.format("$%.2f", totalPaid)});
         });
 
         panel.add(title, BorderLayout.NORTH);
@@ -544,7 +555,7 @@ private String generateUniversityId() {
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap(20, Short.MAX_VALUE)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGap(307, 307, 307)
@@ -561,7 +572,7 @@ private String generateUniversityId() {
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
                 .addComponent(jPanel8, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 29, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 111, Short.MAX_VALUE)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButton1)
                     .addComponent(jButton2)
@@ -610,8 +621,8 @@ private String generateUniversityId() {
                         .addComponent(jButton10)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButton11)
-                        .addGap(0, 0, Short.MAX_VALUE))
-                    .addComponent(jScrollPane4, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 910, Short.MAX_VALUE))
+                        .addGap(0, 324, Short.MAX_VALUE))
+                    .addComponent(jScrollPane4, javax.swing.GroupLayout.Alignment.TRAILING))
                 .addContainerGap())
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addGap(377, 377, 377)
@@ -624,7 +635,7 @@ private String generateUniversityId() {
                 .addContainerGap()
                 .addComponent(jLabel4)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 386, Short.MAX_VALUE)
+                .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 468, Short.MAX_VALUE)
                 .addGap(35, 35, 35)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButton9)
@@ -686,7 +697,7 @@ private String generateUniversityId() {
                 .addComponent(jButton7)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jButton8)
-                .addContainerGap(272, Short.MAX_VALUE))
+                .addContainerGap(328, Short.MAX_VALUE))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -694,7 +705,7 @@ private String generateUniversityId() {
                 .addContainerGap()
                 .addComponent(jLabel5)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jScrollPane5, javax.swing.GroupLayout.DEFAULT_SIZE, 386, Short.MAX_VALUE)
+                .addComponent(jScrollPane5, javax.swing.GroupLayout.DEFAULT_SIZE, 468, Short.MAX_VALUE)
                 .addGap(35, 35, 35)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButton5)
@@ -734,7 +745,7 @@ private String generateUniversityId() {
             .addGroup(jPanel6Layout.createSequentialGroup()
                 .addGap(382, 382, 382)
                 .addComponent(jLabel1)
-                .addContainerGap(362, Short.MAX_VALUE))
+                .addContainerGap(418, Short.MAX_VALUE))
         );
         jPanel6Layout.setVerticalGroup(
             jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -742,7 +753,7 @@ private String generateUniversityId() {
                 .addContainerGap()
                 .addComponent(jLabel1)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 398, Short.MAX_VALUE))
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 391, Short.MAX_VALUE))
         );
 
         jSplitPane1.setTopComponent(jPanel6);
@@ -809,12 +820,12 @@ private String generateUniversityId() {
                         .addGap(0, 0, Short.MAX_VALUE))
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel5Layout.createSequentialGroup()
                         .addComponent(jLabel8)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 383, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 439, Short.MAX_VALUE)
                         .addComponent(jTextField3, javax.swing.GroupLayout.PREFERRED_SIZE, 465, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
             .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel5Layout.createSequentialGroup()
-                    .addContainerGap(445, Short.MAX_VALUE)
+                    .addContainerGap(501, Short.MAX_VALUE)
                     .addComponent(jTextField5, javax.swing.GroupLayout.PREFERRED_SIZE, 465, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addContainerGap()))
         );
@@ -823,7 +834,7 @@ private String generateUniversityId() {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel5Layout.createSequentialGroup()
                 .addGap(57, 57, 57)
                 .addComponent(jLabel6)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 58, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 140, Short.MAX_VALUE)
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jTextField4, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel7))
@@ -838,7 +849,7 @@ private String generateUniversityId() {
                 .addGroup(jPanel5Layout.createSequentialGroup()
                     .addGap(26, 26, 26)
                     .addComponent(jTextField5, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addContainerGap(372, Short.MAX_VALUE)))
+                    .addContainerGap(454, Short.MAX_VALUE)))
         );
 
         jTabbedPane1.addTab("Profile Management", jPanel5);

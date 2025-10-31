@@ -74,10 +74,16 @@ public class Student extends Person {
     
     public void addEnrollment(Enrollment enrollment) {
         this.enrollments.add(enrollment);
+        // Add tuition to account balance when enrolling
+        this.accountBalance += enrollment.getTuitionAmount();
     }
     
     public void removeEnrollment(Enrollment enrollment) {
         this.enrollments.remove(enrollment);
+        // If the enrollment was paid, refund the student
+        if (enrollment.isPaid()) {
+            this.accountBalance -= enrollment.getTuitionAmount();
+        }
     }
     
     public ArrayList<TuitionPayment> getPaymentHistory() {
@@ -86,6 +92,80 @@ public class Student extends Person {
     
     public void addPayment(TuitionPayment payment) {
         this.paymentHistory.add(payment);
+    }
+    
+    /**
+     * Get list of unpaid enrollments
+     */
+    public ArrayList<Enrollment> getUnpaidEnrollments() {
+        ArrayList<Enrollment> unpaid = new ArrayList<>();
+        for (Enrollment e : enrollments) {
+            if (!e.isPaid() && e.isActive()) {
+                unpaid.add(e);
+            }
+        }
+        return unpaid;
+    }
+    
+    /**
+     * Get list of paid enrollments (for transcript display)
+     */
+    public ArrayList<Enrollment> getPaidEnrollments() {
+        ArrayList<Enrollment> paid = new ArrayList<>();
+        for (Enrollment e : enrollments) {
+            if (e.isPaid()) {
+                paid.add(e);
+            }
+        }
+        return paid;
+    }
+    
+    /**
+     * Calculate unpaid balance
+     */
+    public double calculateUnpaidBalance() {
+        double unpaid = 0.0;
+        for (Enrollment e : enrollments) {
+            if (!e.isPaid() && e.isActive()) {
+                unpaid += e.getTuitionAmount();
+            }
+        }
+        return unpaid;
+    }
+    
+    /**
+     * Process payment for a specific enrollment
+     */
+    public boolean payForEnrollment(Enrollment enrollment, String paymentId) {
+        if (enrollment == null || !enrollments.contains(enrollment)) {
+            return false;
+        }
+        
+        if (enrollment.isPaid()) {
+            return false; // Already paid
+        }
+        
+        // Mark enrollment as paid
+        enrollment.setPaid(true);
+        
+        // Reduce account balance
+        this.accountBalance -= enrollment.getTuitionAmount();
+        
+        // Create payment record
+        TuitionPayment payment = new TuitionPayment(paymentId, this, enrollment, enrollment.getTuitionAmount());
+        this.paymentHistory.add(payment);
+        
+        return true;
+    }
+    
+    /**
+     * Process refund when dropping a paid course
+     */
+    public void refundEnrollment(Enrollment enrollment) {
+        if (enrollment != null && enrollment.isPaid()) {
+            enrollment.setPaid(false);
+            this.accountBalance -= enrollment.getTuitionAmount(); // Reduce debt (negative balance means credit)
+        }
     }
     
     /**

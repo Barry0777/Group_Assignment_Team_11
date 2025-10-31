@@ -62,11 +62,8 @@ public class StudentService {
         
         // Add enrollment to all relevant places
         directory.addEnrollment(enrollment);
-        student.addEnrollment(enrollment);
+        student.addEnrollment(enrollment); // This now adds tuition to balance automatically
         offering.addEnrollment(enrollment);
-        
-        // Add tuition to student's balance
-        student.setAccountBalance(student.getAccountBalance() + enrollment.getTuitionAmount());
         
         return enrollment;
     }
@@ -93,19 +90,22 @@ public class StudentService {
         
         // Refund tuition if already paid
         if (enrollment.isPaid()) {
-            double refundAmount = enrollment.getTuitionAmount();
-            student.setAccountBalance(student.getAccountBalance() - refundAmount);
+            student.refundEnrollment(enrollment);
             
             // Create refund payment record
             String paymentId = directory.generatePaymentId();
             TuitionPayment refund = new TuitionPayment(
                 paymentId, 
                 student, 
-                -refundAmount, 
-                offering.getSemester().getFullName()
+                enrollment,
+                enrollment.getTuitionAmount()
             );
+            refund.setAmount(-enrollment.getTuitionAmount()); // Negative for refund
             refund.setDescription("Refund for dropping " + offering.getCourse().getCourseId());
             student.addPayment(refund);
+        } else {
+            // Just remove the tuition charge
+            student.setAccountBalance(student.getAccountBalance() - enrollment.getTuitionAmount());
         }
         
         return true;
@@ -268,7 +268,7 @@ public class StudentService {
     // ========== TRANSCRIPT ==========
     
     /**
-     * Get transcript for a specific semester
+     * Get transcript for a specific semester (only paid enrollments)
      */
     public ArrayList<Enrollment> getTranscriptBySemester(Student student, Semester semester) {
         ArrayList<Enrollment> transcript = new ArrayList<>();
@@ -277,7 +277,7 @@ public class StudentService {
             return transcript;
         }
         
-        for (Enrollment e : student.getEnrollments()) {
+        for (Enrollment e : student.getPaidEnrollments()) {
             if (e.getCourseOffering().getSemester().equals(semester)) {
                 transcript.add(e);
             }
@@ -287,14 +287,14 @@ public class StudentService {
     }
     
     /**
-     * Get complete transcript
+     * Get complete transcript (only paid enrollments)
      */
     public ArrayList<Enrollment> getCompleteTranscript(Student student) {
         if (student == null) {
             return new ArrayList<>();
         }
         
-        return new ArrayList<>(student.getEnrollments());
+        return student.getPaidEnrollments();
     }
     
     /**
@@ -309,62 +309,67 @@ public class StudentService {
     }
     
     /**
-     * Check if student can view transcript (tuition must be paid)
+     * Check if student can view transcript (all tuition must be paid)
      */
     public boolean canViewTranscript(Student student) {
         if (student == null) {
             return false;
         }
         
-        // Student can view transcript only if balance is 0 or negative
-        return student.getAccountBalance() <= 0;
+        // Student can view transcript only if all active enrollments are paid
+        return student.calculateUnpaidBalance() <= 0;
     }
     
     // ========== TUITION MANAGEMENT ==========
     
     /**
-     * Pay tuition
+     * Pay tuition for a specific enrollment/course
      */
-    public TuitionPayment payTuition(Student student, double amount) {
+    public TuitionPayment payForCourse(Student student, Enrollment enrollment) {
         if (student == null) {
             throw new IllegalArgumentException("Student cannot be null");
         }
         
-        if (amount <= 0) {
-            throw new IllegalArgumentException("Payment amount must be greater than 0");
+        if (enrollment == null) {
+            throw new IllegalArgumentException("Enrollment cannot be null");
         }
         
-        // Check if there's a balance to pay
-        if (student.getAccountBalance() <= 0) {
-            throw new IllegalArgumentException("No balance to pay");
+        if (!student.getEnrollments().contains(enrollment)) {
+            throw new IllegalArgumentException("Enrollment does not belong to this student");
         }
         
-        // Create payment record
+        if (enrollment.isPaid()) {
+            throw new IllegalArgumentException("This course is already paid");
+        }
+        
+        if (!enrollment.isActive()) {
+            throw new IllegalArgumentException("Cannot pay for inactive enrollment");
+        }
+        
+        // Generate payment ID
         String paymentId = directory.generatePaymentId();
-        TuitionPayment payment = new TuitionPayment(
-            paymentId,
-            student,
-            amount,
-            "Payment"
-        );
-        payment.setDescription("Tuition payment");
         
-        // Update student balance
-        student.setAccountBalance(student.getAccountBalance() - amount);
+        // Use student's payForEnrollment method
+        boolean success = student.payForEnrollment(enrollment, paymentId);
         
-        // Add payment to history
-        student.addPayment(payment);
-        
-        // Mark enrollments as paid if balance is cleared
-        if (student.getAccountBalance() <= 0) {
-            for (Enrollment e : student.getEnrollments()) {
-                if (e.isActive() && !e.isPaid()) {
-                    e.setPaid(true);
-                }
-            }
+        if (!success) {
+            throw new IllegalArgumentException("Payment failed");
         }
         
-        return payment;
+        // Get the payment that was just created
+        ArrayList<TuitionPayment> payments = student.getPaymentHistory();
+        return payments.get(payments.size() - 1);
+    }
+    
+    /**
+     * Get list of unpaid enrollments for payment selection
+     */
+    public ArrayList<Enrollment> getUnpaidEnrollments(Student student) {
+        if (student == null) {
+            return new ArrayList<>();
+        }
+        
+        return student.getUnpaidEnrollments();
     }
     
     /**
@@ -379,14 +384,25 @@ public class StudentService {
     }
     
     /**
-     * Calculate total tuition owed
+     * Calculate total unpaid tuition
+     */
+    public double calculateUnpaidBalance(Student student) {
+        if (student == null) {
+            return 0.0;
+        }
+        
+        return student.calculateUnpaidBalance();
+    }
+    
+    /**
+     * Calculate total tuition for all active enrollments
      */
     public double calculateTotalTuition(Student student) {
         if (student == null) {
             return 0.0;
         }
         
-        return Math.max(0, student.getAccountBalance());
+        return student.getAccountBalance();
     }
     
     // ========== ASSIGNMENT SUBMISSION ==========
