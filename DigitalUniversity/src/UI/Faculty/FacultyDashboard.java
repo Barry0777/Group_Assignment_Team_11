@@ -441,6 +441,7 @@ public class FacultyDashboard extends javax.swing.JPanel {
         };
         tblGrades.setModel(gradesModel);
 
+
         cmbGradeCourse.removeAllItems();
         if (me != null) {
             for (CourseOffering co : me.getAssignedCourses()) {
@@ -466,6 +467,16 @@ public class FacultyDashboard extends javax.swing.JPanel {
             if (assignmentsModel.getSize() > 0) {
                 lstAssignments.setSelectedIndex(0);
                 loadGradesForSelectedAssignment();
+            }
+        });
+        
+        cmbGradeCourse.addActionListener(e -> {
+            loadAssignments();
+            if (assignmentsModel.getSize() > 0) {
+                lstAssignments.setSelectedIndex(0);
+                loadGradesForSelectedAssignment();
+            } else {
+                gradesModel.setRowCount(0); 
             }
         });
         
