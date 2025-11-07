@@ -24,6 +24,8 @@ public class CreateCourseOfferingJPanel extends javax.swing.JPanel {
     private Business business;
     private JPanel CardSequencePanel;
 
+    
+    
     /**
      * Creates new form CreateCourseOfferingJPanel
      * @param b The business object.
