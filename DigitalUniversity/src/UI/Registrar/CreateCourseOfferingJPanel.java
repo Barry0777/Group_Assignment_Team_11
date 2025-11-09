@@ -49,6 +49,12 @@ public class CreateCourseOfferingJPanel extends javax.swing.JPanel {
     private void populateCombos() {
         // Populate Course ComboBox
         DefaultComboBoxModel<Course> courseModel = new DefaultComboBoxModel<>();
+      
+        
+        
+        
+        
+        
         for (Department dept : business.getUniversity().getDepartmentDirectory().getDepartmentList()) {
             for (Course course : dept.getCourseCatalog().getCourseList()) {
                 courseModel.addElement(course);
@@ -244,6 +250,8 @@ public class CreateCourseOfferingJPanel extends javax.swing.JPanel {
         btnBackActionPerformed(null);
     }
 
+    
+    
     private Department findDepartmentForCourse(Course targetCourse) {
         for (Department dept : business.getUniversity().getDepartmentDirectory().getDepartmentList()) {
             if (dept.getCourseCatalog().getCourseByNumber(targetCourse.getCOurseNumber()) != null) {
