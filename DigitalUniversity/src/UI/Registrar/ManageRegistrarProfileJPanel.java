@@ -32,6 +32,12 @@ public class ManageRegistrarProfileJPanel extends javax.swing.JPanel {
     public ManageRegistrarProfileJPanel(Business b, RegistrarProfile rp, JPanel cardSequencePanel) {
         initComponents();
         this.business = b;
+       
+        
+        
+        
+        
+        
         this.registrarProfile = rp;
         this.CardSequencePanel = cardSequencePanel;
         populateProfileDetails();
