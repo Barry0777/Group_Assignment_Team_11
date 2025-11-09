@@ -20,7 +20,13 @@ public class ManageRegistrarProfileJPanel extends javax.swing.JPanel {
 
     private JPanel CardSequencePanel;
     private Business business;
-    private RegistrarProfile registrarProfile;
+    
+            
+            
+            
+            
+            
+  private RegistrarProfile registrarProfile;
 
 
     public ManageRegistrarProfileJPanel(Business b, RegistrarProfile rp, JPanel cardSequencePanel) {
