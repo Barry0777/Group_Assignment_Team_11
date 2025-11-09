@@ -32,6 +32,12 @@ public class ProfileWorkAreaMainFrame extends javax.swing.JFrame {
         
         authService = AuthenticationService.getInstance();
         universityDirectory = UniversityDirectory.getInstance();
+     
+        
+        
+        
+        
+        
         
         new business.DataInitializer().initializeData(); 
 

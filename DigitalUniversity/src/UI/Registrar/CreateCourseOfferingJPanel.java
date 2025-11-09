@@ -32,6 +32,14 @@ public class CreateCourseOfferingJPanel extends javax.swing.JPanel {
      * @param cardSequencePanel The main panel for navigation.
      */
     public CreateCourseOfferingJPanel(Business b, JPanel cardSequencePanel) {
+        
+        
+        
+        
+        
+        
+        
+        
         initComponents();
         this.business = b;
         this.CardSequencePanel = cardSequencePanel;
